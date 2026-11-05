@@ -61,7 +61,6 @@ jobs:
           path: |
             ${{ matrix.out }}/deb/*.deb
             ${{ matrix.out }}/rpm/*.rpm
-            ${{ matrix.out }}/appimage/*.AppImage
             ${{ matrix.out }}/msi/*.msi
             ${{ matrix.out }}/nsis/*.exe
             ${{ matrix.out }}/dmg/*.dmg
@@ -75,7 +74,6 @@ jobs:
           files: |
             ${{ matrix.out }}/deb/*.deb
             ${{ matrix.out }}/rpm/*.rpm
-            ${{ matrix.out }}/appimage/*.AppImage
             ${{ matrix.out }}/msi/*.msi
             ${{ matrix.out }}/nsis/*.exe
             ${{ matrix.out }}/dmg/*.dmg

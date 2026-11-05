@@ -33,9 +33,66 @@ npm run build   # release bundles in src-tauri/target/release/bundle
 
 ## CI
 
-GitHub Actions builds for Linux (.deb, .rpm, .AppImage), Windows (.msi, .exe), and macOS
+GitHub Actions builds for Linux (.deb, .rpm), Windows (.msi, .exe), and macOS
 (universal .dmg) on every push. You can download the installers from the run's artifacts. Pushing a `v*` tag
 also attaches them to a draft GitHub Release.
 
+See [Linux packages](#linux-packages) for why there's no AppImage.
+
 Builds are unsigned. On macOS, right-click the app and choose Open the first time. On Windows, choose
 "More info → Run anyway" in SmartScreen.
+
+## Linux packages
+
+Linux builds ship only as **`.deb`** (Debian, Ubuntu, Mint, Pop!_OS, …) and **`.rpm`** (Fedora, RHEL, …).
+Each is about 1.4 MB.
+
+### Why there's no AppImage
+
+Tiny Kanban doesn't ship its own browser engine. It uses the system's WebKitGTK, which is why it's so small.
+An AppImage has to work without relying on system libraries, so it bundles its own copy of WebKitGTK,
+GTK and their dependencies. That makes it roughly **80 MB**, about 60× bigger, for a slower-starting app
+that also misses your distro's WebKit security updates. That cost isn't worth it for a 3.5 MB app.
+
+### Running on other distros
+
+The app needs only two system libraries: **WebKitGTK 4.1** and **GTK 3**. The released binaries are built on
+Ubuntu 22.04, so they also need **glibc 2.35 or newer**, which any distro from 2022 onward has.
+
+**1. Install the runtime libraries**
+
+| Distro | Command |
+|---|---|
+| Arch / Manjaro / EndeavourOS | `sudo pacman -S webkit2gtk-4.1` |
+| openSUSE | `sudo zypper install libwebkit2gtk-4_1-0` |
+| Void | `sudo xbps-install webkit2gtk` |
+| Alpine | `sudo apk add webkit2gtk-4.1` |
+| Gentoo | `sudo emerge net-libs/webkit-gtk:4.1` |
+
+**2a. Use the prebuilt binary from the `.deb`** (it's a self-contained executable)
+
+```bash
+mkdir tk && cd tk
+ar x "../Tiny Kanban_"*_amd64.deb data.tar.gz   # or: bsdtar -xf "../Tiny Kanban_"*.deb
+tar xf data.tar.gz
+sudo cp usr/bin/tiny-kanban /usr/local/bin/
+sudo cp "usr/share/applications/Tiny Kanban.desktop" /usr/share/applications/   # optional: app menu entry
+sudo cp -r usr/share/icons/hicolor /usr/share/icons/                             # optional: icon
+```
+
+On openSUSE you can also install the `.rpm` with `sudo rpm -i --nodeps "Tiny Kanban-"*.rpm`. Its listed
+dependency names follow Fedora's package naming, but the actual libraries are the same.
+
+**2b. Or build from source.** Install Rust, Node, and the
+[Tauri Linux prerequisites](https://tauri.app/start/prerequisites/#linux) for your distro, then:
+
+```bash
+npm install
+npx tauri build --no-bundle      # binary: src-tauri/target/release/tiny-kanban
+```
+
+**Need an AppImage anyway?** You can still build one yourself:
+
+```bash
+npx tauri build --bundles appimage
+```
