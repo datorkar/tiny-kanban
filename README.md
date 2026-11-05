@@ -27,7 +27,7 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
   doesn't pass clicks through.
 - **Time tracking**: while a card is in a time-tracking column (by default **Doing**), a small clock on it ticks.
   Moving it out stops the clock but keeps the time, and the clock stays on the card. Hover the clock to see the total
-  time tracked. Time keeps counting while the app is closed, since it measures how long the card has been in the column.
+  time tracked. Time only counts while the app is running: not while it's closed, and not while the computer sleeps.
 - **Settings**: click the cogwheel in the top strip. It has an opacity slider (10–100%, 10% steps) and the column list:
   rename, add or remove columns (a removed column's cards move to its neighbour), and choose which columns track time
   with the clock button. The menu is always regular size, even in mini mode. On Linux, a see-through window needs a

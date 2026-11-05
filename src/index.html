@@ -161,7 +161,8 @@ function save() {
     })
   }));
   const bc = document.body.classList;
-  return persist(JSON.stringify({ mini: bc.contains('mini'), locked: bc.contains('locked'), ontop: bc.contains('ontop'), opacity, cols }));
+  beat = Date.now();
+  return persist(JSON.stringify({ at: beat, mini: bc.contains('mini'), locked: bc.contains('locked'), ontop: bc.contains('ontop'), opacity, cols }));
 }
 function sync() {
   lists = [...B.querySelectorAll('.list')];
@@ -199,6 +200,23 @@ function track() {
     }
   }
 }
+// Clocks only count while the app runs. Each save stamps the time ("at"), and
+// running clocks save once a minute, so after a restart running cards are
+// credited up to the last stamp. A long gap between beats means the computer
+// slept, and that gap isn't counted either.
+let beat = Date.now();
+function pause(from, to) {
+  for (const c of B.querySelectorAll('.card[data-since]')) {
+    const since = +c.dataset.since;
+    if (since < from) c.dataset.ms = (+c.dataset.ms || 0) + from - since;
+    c.dataset.since = Math.max(since, to);
+  }
+}
+setInterval(() => {
+  const now = Date.now();
+  if (now - beat > 150e3) pause(beat + 60e3, now); // asleep: count up to the expected beat only
+  if (B.querySelector('.card.run')) { clearTimeout(timer); save(); }
+}, 60e3);
 function elapsed(c) { return (+c.dataset.ms || 0) + (+c.dataset.since ? Date.now() - c.dataset.since : 0) }
 function fmt(ms) {
   const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
@@ -238,6 +256,7 @@ function build(data) {
   const cols = data && Array.isArray(data.cols) && data.cols.length ? data.cols : DEFAULT_COLS;
   // Boards saved before columns were configurable: Doing tracks time.
   for (const c of cols) addColumn({ ...c, track: c.track ?? /^doing$/i.test(c.name) });
+  pause(data && data.at || Date.now(), Date.now()); // the app was closed in between
   sync();
 }
 
