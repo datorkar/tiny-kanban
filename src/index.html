@@ -68,14 +68,18 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 #h button,#h #lk,#h #tp{width:22px}
 #b{gap:3px;padding:0 3px 3px}
 }
-/* Mini mode: hovered, dragged, edited cards and the focused input grow to full size */
-.mini:not(.dragging) .card:hover,.mini .card.drag,.mini .card:has([contenteditable=plaintext-only]),.mini .card:has([contenteditable=true]),.mini .add:focus{font-size:12.5px}
+/* Mini mode: dragged and edited cards and the focused input grow to full size;
+   a hovered card pops out as a floating copy (#z) that doesn't move anything */
+#z{position:fixed;z-index:7;cursor:grab;box-shadow:0 6px 20px #0004;transition:transform .15s ease-out}
+#z[hidden]{display:none}
+.mini .card.drag,.mini .card:has([contenteditable=plaintext-only]),.mini .card:has([contenteditable=true]),.mini .add:focus{font-size:12.5px}
 </style>
 </head>
 <body>
 <header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
+<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Delete">×</button></div>
 <div id="op" hidden>Opacity <input type="range" min="10" max="100" step="10" value="100"><b>100%</b></div>
 <script>
 const COLS = ['To do', 'Doing', 'Done'];
@@ -145,8 +149,8 @@ B.addEventListener('click', e => {
 });
 
 // Edit on double-click: Enter saves, Esc cancels, empty deletes.
-B.addEventListener('dblclick', e => {
-  const t = e.target.closest('.t');
+B.addEventListener('dblclick', e => edit(e.target.closest('.t')));
+function edit(t) {
   if (!t || t.isContentEditable) return;
   const old = t.textContent;
   t.spellcheck = true;
@@ -166,7 +170,7 @@ B.addEventListener('dblclick', e => {
   };
   t.addEventListener('keydown', key);
   t.addEventListener('blur', done, { once: true });
-});
+}
 
 // Drag & drop with pointer events (consistent across WebKit / WebView2 / WebKitGTK).
 let d = null;
@@ -180,11 +184,11 @@ addEventListener('pointermove', e => {
   if (!d) return;
   if (!d.on) {
     if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 5) return;
-    const r = d.c.getBoundingClientRect();
+    const cr = d.c.getBoundingClientRect(), r = d.from || cr; // from = the mini-mode pop-out
     d.ox = d.sx - r.left; d.oy = d.sy - r.top;
     d.ph = document.createElement('div');
     d.ph.className = 'ph';
-    d.ph.style.height = r.height + 'px';
+    d.ph.style.height = cr.height + 'px';
     d.c.replaceWith(d.ph);
     d.c.style.width = r.width + 'px';
     d.c.classList.add('drag');
@@ -223,6 +227,41 @@ function end() {
   d = null;
 }
 addEventListener('pointerup', end);
+
+// Mini-mode pop-out: a full-size floating copy of the hovered card, grown from
+// the card's centre. It overlaps neighbours and column edges instead of pushing
+// cards around, and acts for the card: drag it, double-click to edit, × deletes.
+const Z = document.getElementById('z');
+let zc = null;
+function hideZoom() { Z.hidden = true; zc = null }
+B.addEventListener('pointerover', e => {
+  const c = e.target.closest('.card');
+  if (!c || c === zc || d || e.pointerType === 'touch' || !document.body.classList.contains('mini') ||
+      document.body.classList.contains('locked') || c.querySelector('[contenteditable=true],[contenteditable=plaintext-only]')) return;
+  zc = c;
+  const r = c.getBoundingClientRect(), k = 2; // full size is 2x mini
+  Z.firstChild.textContent = c.firstChild.textContent;
+  const w = Math.min(r.width * k, innerWidth - 8);
+  Z.style.cssText = `width:${w}px;transition:none;transform:none`;
+  Z.hidden = false;
+  const h = Z.offsetHeight, cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const left = Math.max(4, Math.min(cx - w / 2, innerWidth - w - 4));
+  const top = Math.max(4, Math.min(cy - h / 2, innerHeight - h - 4));
+  Z.style.left = left + 'px'; Z.style.top = top + 'px';
+  Z.style.transformOrigin = `${cx - left}px ${cy - top}px`;
+  Z.style.transform = `scale(${r.width / w})`;
+  Z.offsetWidth; // start from the card's own size…
+  Z.style.transition = ''; Z.style.transform = ''; // …and grow
+});
+Z.addEventListener('pointerleave', hideZoom);
+Z.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || !zc) return;
+  if (e.target.closest('.x')) { zc.remove(); hideZoom(); sync(); return; }
+  d = { c: zc, sx: e.clientX, sy: e.clientY, on: false, from: Z.getBoundingClientRect() };
+});
+addEventListener('pointermove', () => { if (d && d.on && !Z.hidden) hideZoom() });
+Z.addEventListener('dblclick', () => { const c = zc; hideZoom(); edit(c && c.querySelector('.t')) });
+Z.addEventListener('wheel', e => { const l = zc && zc.parentNode; hideZoom(); if (l) l.scrollBy(0, e.deltaY) }, { passive: true });
 addEventListener('pointercancel', end);
 addEventListener('blur', end);
 
@@ -294,7 +333,7 @@ B.addEventListener('scroll', hideGhost, true);
 // Auto-update: check on start and every 6 hours; the header shows a button
 // when a new version is ready.
 // Mini mode: half-size text; cards grow back to full size on hover.
-document.getElementById('mm').onclick = () => { document.body.classList.toggle('mini'); sync(); };
+document.getElementById('mm').onclick = () => { document.body.classList.toggle('mini'); hideZoom(); sync(); };
 
 // Lock: everything except the lock button ignores mouse and keyboard.
 const lk = document.getElementById('lk');
@@ -303,7 +342,7 @@ const lk = document.getElementById('lk');
 function setLocked(on) {
   document.body.classList.toggle('locked', on);
   lk.title = on ? 'Unlock' : 'Lock';
-  if (on) { end(); hideOpacity(); if (document.activeElement !== lk) document.activeElement.blur(); }
+  if (on) { end(); hideOpacity(); hideZoom(); if (document.activeElement !== lk) document.activeElement.blur(); }
   syncPassthrough();
 }
 async function syncPassthrough() {

@@ -15,8 +15,9 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Autocomplete**: while typing, words already on your board appear as faint text after the cursor. Press Tab or → to accept.
 - **Spell check**: uses the operating system's own spell checker and dictionaries. On Linux it follows your `LANG`
   setting (e.g. `en_US`) and needs a Hunspell dictionary installed, e.g. `hunspell-en-us`. Most desktop distros ship one.
-- **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits, and a card
-  grows back to full size while you hover over it, drag it or edit it. The dot is smaller while mini mode is on, and the
+- **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits. Hovering a
+  card pops out a full-size copy over the board without moving other cards; you can drag it, double-click it to edit,
+  or use its × to delete. Cards also return to full size while being dragged or edited. The dot is smaller while mini mode is on, and the
   setting is remembered.
 - **Always on top**: click the pin in the top strip to keep the window above all others. It's remembered across restarts.
 - **Lock**: click the padlock in the top strip. While locked, the board ignores the mouse and keyboard, and clicks pass
