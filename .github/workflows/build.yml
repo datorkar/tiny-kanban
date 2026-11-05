@@ -66,14 +66,25 @@ jobs:
             ${{ matrix.out }}/dmg/*.dmg
           if-no-files-found: error
 
-      - name: Attach to GitHub Release (tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-          draft: true
-          files: |
-            ${{ matrix.out }}/deb/*.deb
-            ${{ matrix.out }}/rpm/*.rpm
-            ${{ matrix.out }}/msi/*.msi
-            ${{ matrix.out }}/nsis/*.exe
-            ${{ matrix.out }}/dmg/*.dmg
+          path: dist
+          merge-multiple: true
+
+      # GitHub turns spaces in asset names into dots; use clean names instead.
+      - name: Normalise file names
+        run: |
+          find dist -type f -name '* *' | while read -r f; do
+            mv "$f" "$(dirname "$f")/$(basename "$f" | sed 's/Tiny Kanban/tiny-kanban/; s/ /-/g')"
+          done
+          find dist -type f
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/**/*

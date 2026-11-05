@@ -35,7 +35,7 @@ npm run build   # release bundles in src-tauri/target/release/bundle
 
 GitHub Actions builds for Linux (.deb, .rpm), Windows (.msi, .exe), and macOS
 (universal .dmg) on every push. You can download the installers from the run's artifacts. Pushing a `v*` tag
-also attaches them to a draft GitHub Release.
+also publishes them as a GitHub Release.
 
 See [Linux packages](#linux-packages) for why there's no AppImage.
 
@@ -73,14 +73,14 @@ Ubuntu 22.04, so they also need **glibc 2.35 or newer**, which any distro from 2
 
 ```bash
 mkdir tk && cd tk
-ar x "../Tiny Kanban_"*_amd64.deb data.tar.gz   # or: bsdtar -xf "../Tiny Kanban_"*.deb
+ar x ../tiny-kanban_*_amd64.deb data.tar.gz   # or: bsdtar -xf ../tiny-kanban_*.deb
 tar xf data.tar.gz
 sudo cp usr/bin/tiny-kanban /usr/local/bin/
 sudo cp "usr/share/applications/Tiny Kanban.desktop" /usr/share/applications/   # optional: app menu entry
 sudo cp -r usr/share/icons/hicolor /usr/share/icons/                             # optional: icon
 ```
 
-On openSUSE you can also install the `.rpm` with `sudo rpm -i --nodeps "Tiny Kanban-"*.rpm`. Its listed
+On openSUSE you can also install the `.rpm` with `sudo rpm -i --nodeps tiny-kanban-*.rpm`. Its listed
 dependency names follow Fedora's package naming, but the actual libraries are the same.
 
 **2b. Or build from source.** Install Rust, Node, and the
