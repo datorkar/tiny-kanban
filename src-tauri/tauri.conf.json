@@ -17,17 +17,26 @@
         "minHeight": 200,
         "decorations": false,
         "shadow": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "transparent": true
       }
     ],
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "targets": ["deb", "rpm", "nsis", "msi", "app", "dmg"],
+    "targets": [
+      "deb",
+      "rpm",
+      "nsis",
+      "msi",
+      "app",
+      "dmg"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -39,8 +48,12 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE2M0Q2QTg0MUI3QTMwRjIKUldUeU1Ib2JoR285cHJqMHlFa3ZBM0tGY29mNW1XWUxaMWhmNGVmQmlONzBDWEg2YjNQdFlaaysK",
-      "endpoints": ["https://github.com/datorkar/tiny-kanban/releases/latest/download/latest.json"],
-      "windows": { "installMode": "passive" }
+      "endpoints": [
+        "https://github.com/datorkar/tiny-kanban/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

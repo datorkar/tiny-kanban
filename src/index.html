@@ -9,6 +9,7 @@
 @media (prefers-color-scheme:dark){:root{--bg:#18181b;--col:#232327;--card:#2e2e33;--fg:#ececf1;--mute:#8d8d96;--sh:0 1px 2px #0006}}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
+html{background:transparent}
 body{background:var(--bg);color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;display:flex;flex-direction:column}
 #h{flex:none;position:relative;height:22px;display:flex;align-items:center;padding-left:10px;user-select:none;-webkit-user-select:none;cursor:default}
 #h span{flex:1;font-size:10.5px;font-weight:600;color:var(--mute);pointer-events:none}
@@ -18,6 +19,18 @@ body{background:var(--bg);color:var(--fg);font:12.5px/1.35 system-ui,-apple-syst
 #h #up{width:auto;height:16px;margin-right:4px;padding:0 7px;border-radius:8px;background:var(--acc);color:#fff;font:600 10px/16px system-ui,sans-serif}
 #h #up:hover{filter:brightness(1.1)}
 #h #mm{position:absolute;left:50%;top:0;width:30px;margin-left:-15px}
+#h #lk{width:26px}
+#lk svg{width:11px;height:11px;display:block;margin:auto}
+#lk .on,.locked #lk .off{display:none}
+.locked #lk .on{display:inline}
+.locked #lk{color:var(--acc)}
+.locked #h,.locked #b{pointer-events:none}
+.locked #h #lk{pointer-events:auto}
+.locked #h>:not(#lk):not(span){opacity:.35}
+#op{position:fixed;top:24px;z-index:10;display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--card);border-radius:6px;box-shadow:0 4px 14px #0004;font-size:10.5px;color:var(--mute);user-select:none;-webkit-user-select:none}
+#op[hidden]{display:none}
+#op input{width:96px;margin:0;accent-color:var(--acc)}
+#op b{width:28px;text-align:right;font-weight:600}
 #mm::after{content:"";display:block;margin:auto;width:8px;height:8px;border-radius:50%;background:currentColor;transition:width .15s,height .15s}
 .mini #mm::after{width:4px;height:4px}
 #g{position:fixed;z-index:8;pointer-events:none;color:var(--mute);white-space:pre}
@@ -44,9 +57,10 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 </style>
 </head>
 <body>
-<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
+<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
+<div id="op" hidden>Opacity <input type="range" min="10" max="100" step="10" value="100"><b>100%</b></div>
 <script>
 const COLS = ['To do', 'Doing', 'Done'];
 const B = document.getElementById('b');
@@ -68,7 +82,7 @@ function persist(json) {
 // The DOM is the model: read it back, update counts, save (debounced).
 function save() {
   timer = 0;
-  return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
+  return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), locked: document.body.classList.contains('locked'), opacity, cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
 }
 function sync() {
   indexWords();
@@ -89,7 +103,7 @@ function build(data) {
   COLS.forEach((name, i) => {
     const col = document.createElement('section');
     col.className = 'col';
-    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><input class="add" placeholder="+ Add a card" spellcheck="true" autocomplete="off">';
+    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><input class="add" placeholder="+" title="Add a card" aria-label="Add a card" spellcheck="true" autocomplete="off">';
     col.querySelector('span').textContent = name;
     counts[i] = col.querySelector('h2 span+span');
     lists[i] = col.querySelector('.list');
@@ -266,6 +280,40 @@ B.addEventListener('scroll', hideGhost, true);
 // Mini mode: half-size text; cards grow back to full size on hover.
 document.getElementById('mm').onclick = () => { document.body.classList.toggle('mini'); sync(); };
 
+// Lock: everything except the lock button ignores mouse and keyboard.
+const lk = document.getElementById('lk');
+function setLocked(on) {
+  document.body.classList.toggle('locked', on);
+  lk.title = on ? 'Unlock' : 'Lock';
+  if (on) { end(); hideOpacity(); if (document.activeElement !== lk) document.activeElement.blur(); }
+}
+lk.onclick = () => { setLocked(!document.body.classList.contains('locked')); sync(); };
+addEventListener('keydown', e => {
+  if (document.body.classList.contains('locked') && e.target !== lk) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+
+// Opacity: right-click the top bar for a slider (10–100%, steps of 10).
+const op = document.getElementById('op'), opIn = op.querySelector('input'), opOut = op.querySelector('b');
+let opacity = 100;
+function setOpacity(v) {
+  opacity = Math.min(100, Math.max(10, Math.round(v / 10) * 10 || 100));
+  document.body.style.opacity = opacity === 100 ? '' : opacity / 100;
+  opIn.value = opacity; opOut.textContent = opacity + '%';
+}
+function hideOpacity() { op.hidden = true }
+opIn.oninput = () => { setOpacity(+opIn.value); sync(); };
+addEventListener('contextmenu', e => {
+  if (e.target.closest('#h') && !document.body.classList.contains('locked')) {
+    e.preventDefault();
+    op.hidden = false;
+    op.style.left = Math.max(4, Math.min(e.clientX - op.offsetWidth / 2, innerWidth - op.offsetWidth - 4)) + 'px';
+  } else if (!e.target.closest('input,[contenteditable=true],[contenteditable=plaintext-only]')) {
+    e.preventDefault(); // keep the native menu only where it helps (spelling suggestions)
+  }
+});
+addEventListener('pointerdown', e => { if (!op.hidden && !op.contains(e.target)) hideOpacity() }, true);
+addEventListener('keydown', e => { if (e.key === 'Escape') hideOpacity() });
+
 const up = document.getElementById('up');
 async function checkUpdate() {
   try {
@@ -288,6 +336,8 @@ if (invoke) { setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 6 * 3600e3
   let data = null;
   try { data = raw && JSON.parse(raw) } catch (_) {}
   if (data && data.mini) document.body.classList.add('mini');
+  if (data && data.locked) setLocked(true);
+  if (data && data.opacity) setOpacity(data.opacity);
   build(data);
 })();
 </script>

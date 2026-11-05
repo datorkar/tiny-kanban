@@ -8,7 +8,7 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 
 ## Usage
 
-- **Add**: type in "+ Add a card" at the bottom of a column and press Enter. Focus stays put, so you can add several in a row.
+- **Add**: click the **+** at the bottom of a column, type and press Enter. Focus stays put, so you can add several in a row.
 - **Move**: drag a card within a column or to another column.
 - **Edit**: double-click a card. Enter saves, Esc cancels, and clearing the text deletes the card.
 - **Delete**: hover over a card and click ×.
@@ -18,6 +18,10 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits, and a card
   grows back to full size while you hover over it, drag it or edit it. The dot is smaller while mini mode is on, and the
   setting is remembered.
+- **Lock**: click the padlock in the top strip. While locked, nothing responds to the mouse or keyboard except the
+  padlock, so you can't move, edit or close anything by accident. The lock is remembered across restarts.
+- **Opacity**: right-click the top strip for a slider, 10–100% in 10% steps. It's remembered across restarts. On Linux,
+  see-through needs a compositing desktop, which all the common desktops have.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
 
 ## Updates
