@@ -25,8 +25,13 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
   opacity, the board becomes a see-through overlay you can work underneath. The lock is remembered across restarts.
   Under Linux Wayland, apps can't track the mouse outside their own window, so there the lock still blocks input but
   doesn't pass clicks through.
-- **Opacity**: right-click the top strip for a slider, 10–100% in 10% steps. It's remembered across restarts. On Linux,
-  see-through needs a compositing desktop, which all the common desktops have.
+- **Time tracking**: while a card is in a time-tracking column (by default **Doing**), a small clock on it ticks.
+  Moving it out stops the clock but keeps the time, and the clock stays on the card. Hover the clock to see the total
+  time tracked. Time keeps counting while the app is closed, since it measures how long the card has been in the column.
+- **Settings**: click the cogwheel in the top strip. It has an opacity slider (10–100%, 10% steps) and the column list:
+  rename, add or remove columns (a removed column's cards move to its neighbour), and choose which columns track time
+  with the clock button. The menu is always regular size, even in mini mode. On Linux, a see-through window needs a
+  compositing desktop, which all the common desktops have.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
 
 ## Updates

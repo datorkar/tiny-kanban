@@ -22,7 +22,6 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 #h #up{width:auto;height:16px;margin-right:4px;padding:0 7px;border-radius:8px;background:var(--acc);color:#fff;font:600 10px/16px system-ui,sans-serif}
 #h #up:hover{filter:brightness(1.1)}
 #h #mm{position:absolute;left:50%;top:0;width:30px;margin-left:-15px}
-#h #lk,#h #tp{width:26px}
 #tp svg{width:11px;height:11px;display:block;margin:auto}
 .ontop #tp{color:var(--acc)}
 #lk svg{width:11px;height:11px;display:block;margin:auto}
@@ -32,10 +31,38 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 .locked #h,.locked #b{pointer-events:none}
 .locked #h #lk{pointer-events:auto}
 .locked #h>:not(#lk):not(span){opacity:.35}
-#op{position:fixed;top:24px;z-index:10;display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--card);border-radius:6px;box-shadow:0 4px 14px #0004;font-size:10.5px;color:var(--mute);user-select:none;-webkit-user-select:none}
-#op[hidden]{display:none}
-#op input{width:96px;margin:0;accent-color:var(--acc)}
-#op b{width:28px;text-align:right;font-weight:600}
+.locked #st{display:none}
+#h #lk,#h #tp,#h #cg{width:26px}
+#cg svg{width:12px;height:12px;display:block;margin:auto}
+.st #cg{color:var(--fg);background:#8883}
+/* Settings: always regular size (outside #b, so mini mode doesn't scale it) */
+#st{position:fixed;top:24px;right:4px;z-index:10;width:224px;max-height:calc(100% - 28px);overflow-y:auto;padding:8px 10px 10px;background:var(--card);border-radius:7px;box-shadow:0 6px 20px #0005;font:12px/1.35 var(--sys);color:var(--fg);user-select:none;-webkit-user-select:none}
+#st[hidden]{display:none}
+#st h3{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:8px 0 4px}
+#st h3:first-child{margin-top:0}
+#st .op{display:flex;align-items:center;gap:8px}
+#st input[type=range]{flex:1;margin:0;accent-color:var(--acc)}
+#st .op b{width:32px;text-align:right;font-weight:600;font-size:11px}
+#st .cr{display:flex;align-items:center;gap:2px;margin-bottom:3px}
+#st .cr input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
+#st .cr input:focus{border-color:var(--acc)}
+#st button{border:0;background:none;color:var(--mute);font:inherit;border-radius:4px;cursor:pointer;height:24px}
+#st button:hover:not(:disabled){background:#8883;color:var(--fg)}
+#st button:disabled{opacity:.3;cursor:default}
+#st .tr,#st .rm{width:24px;padding:0}
+#st .tr svg{width:13px;height:13px;display:block;margin:auto}
+#st .tr.on{color:var(--acc)}
+#st .add-col{padding:0 6px;margin-top:2px}
+#st .note{font-size:10.5px;color:var(--mute);margin-top:4px}
+/* Time tracking clock: ticks once a second while the card is in a tracking column */
+.ck{position:absolute;top:.42em;right:1.5em;width:.95em;height:.95em;color:var(--mute);display:none}
+.timed{padding-right:2.6em}
+.timed .ck{display:block}
+.run .ck{color:var(--acc)}
+.ck svg{width:100%;height:100%;display:block;overflow:visible}
+.ck .hd{transform-box:view-box;transform-origin:50% 50%}
+.run .ck .hd{animation:tick 8s steps(8) infinite}
+@keyframes tick{to{transform:rotate(360deg)}}
 #mm::after{content:"";display:block;margin:auto;width:8px;height:8px;border-radius:50%;background:currentColor;transition:width .15s,height .15s}
 .mini #mm::after{width:4px;height:4px}
 #g{position:fixed;z-index:8;pointer-events:none;color:var(--mute);white-space:pre}
@@ -75,7 +102,8 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 #h{padding-left:0}
 #h span{display:none}
 #h #mm{position:static;margin:0 auto 0 0;width:22px}
-#h button,#h #lk,#h #tp{width:22px}
+#h button,#h #lk,#h #tp,#h #cg{width:20px}
+#h #mm{width:20px}
 #b{gap:3px;padding:0 3px 3px}
 }
 /* Mini mode: dragged and edited cards and the focused input grow to full size;
@@ -86,13 +114,20 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 </style>
 </head>
 <body>
-<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
+<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="cg" title="Settings"><svg viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M6.9 1h2.2l.4 1.9 1.2.5 1.6-1.1 1.6 1.6-1.1 1.6.5 1.2 1.9.4v2.2l-1.9.4-.5 1.2 1.1 1.6-1.6 1.6-1.6-1.1-1.2.5-.4 1.9H6.9l-.4-1.9-1.2-.5-1.6 1.1-1.6-1.6 1.1-1.6-.5-1.2L1 9.1V6.9l1.9-.4.5-1.2-1.1-1.6 1.6-1.6 1.6 1.1 1.2-.5zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
-<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Delete">×</button></div>
-<div id="op" hidden>Opacity <input type="range" min="10" max="100" step="10" value="100"><b>100%</b></div>
+<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Delete">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
+<div id="st" hidden>
+<h3>Opacity</h3>
+<div class="op"><input id="opIn" type="range" min="10" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
+<h3>Columns</h3>
+<div id="stc"></div>
+<button class="add-col" id="stAdd">+ Add column</button>
+<div class="note">The clock marks columns that track time on their cards.</div>
+</div>
 <script>
-const COLS = ['To do', 'Doing', 'Done'];
+const DEFAULT_COLS = [{ name: 'To do' }, { name: 'Doing', track: true }, { name: 'Done' }];
 document.documentElement.classList.add(/Windows/.test(navigator.userAgent) ? 'os-win' : /Mac/.test(navigator.userAgent) ? 'os-mac' : 'os-linux');
 const B = document.getElementById('b');
 const invoke = window.__TAURI__ && window.__TAURI__.core.invoke;
@@ -111,11 +146,27 @@ function persist(json) {
 }
 
 // The DOM is the model: read it back, update counts, save (debounced).
+// Cards save as { t: text, ms: time tracked so far, since: when the current
+// tracking stretch started }.
 function save() {
   timer = 0;
-  return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), locked: document.body.classList.contains('locked'), ontop: document.body.classList.contains('ontop'), opacity, cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
+  const cols = [...B.children].map(col => ({
+    name: col.querySelector('h2 span').textContent,
+    track: col.dataset.track === '1',
+    cards: [...col.querySelectorAll('.list > .card')].map(c => {
+      const o = { t: c.firstChild.textContent };
+      if (+c.dataset.ms) o.ms = +c.dataset.ms;
+      if (+c.dataset.since) o.since = +c.dataset.since;
+      return o;
+    })
+  }));
+  const bc = document.body.classList;
+  return persist(JSON.stringify({ mini: bc.contains('mini'), locked: bc.contains('locked'), ontop: bc.contains('ontop'), opacity, cols }));
 }
 function sync() {
+  lists = [...B.querySelectorAll('.list')];
+  counts = [...B.querySelectorAll('.col h2 span+span')];
+  track();
   lists.forEach(thumb);
   indexWords();
   lists.forEach((l, i) => counts[i].textContent = l.children.length || '');
@@ -123,36 +174,70 @@ function sync() {
   timer = setTimeout(save, 120);
 }
 
-function card(text) {
-  const c = document.createElement('div');
+function card(v) {
+  const o = typeof v === 'string' ? { t: v } : v, c = document.createElement('div');
   c.className = 'card';
-  c.innerHTML = '<span class="t"></span><button class="x" title="Delete">×</button>';
-  c.firstChild.textContent = text;
+  c.innerHTML = '<span class="t"></span><button class="x" title="Delete">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
+  c.firstChild.textContent = o.t;
+  if (o.ms) c.dataset.ms = o.ms;
+  if (o.since) c.dataset.since = o.since;
   return c;
 }
 
-function build(data) {
-  COLS.forEach((name, i) => {
-    const col = document.createElement('section');
-    col.className = 'col';
-    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><div class="sb" hidden></div><input class="add" placeholder="+" title="Add a card" aria-label="Add a card" spellcheck="true" autocomplete="off">';
-    col.querySelector('span').textContent = name;
-    counts[i] = col.querySelector('h2 span+span');
-    lists[i] = col.querySelector('.list');
-    lists[i].addEventListener('scroll', () => thumb(lists[i]));
-    const saved = data && data.cols && data.cols[i];
-    if (saved) lists[i].append(...saved.cards.map(card));
-    col.querySelector('.add').addEventListener('keydown', e => {
-      const v = e.target.value.trim();
-      if (e.key === 'Enter' && v) {
-        lists[i].append(card(v));
-        e.target.value = '';
-        lists[i].scrollTop = lists[i].scrollHeight;
-        sync();
-      } else if (e.key === 'Escape') e.target.blur();
-    });
-    B.append(col);
+// Time tracking: a card's clock runs while it sits in a column that tracks
+// time; leaving the column banks the elapsed time. Called on every change.
+function track() {
+  const now = Date.now();
+  for (const col of B.children) {
+    const on = col.dataset.track === '1';
+    for (const c of col.querySelectorAll('.list > .card')) {
+      const since = +c.dataset.since || 0;
+      if (on && !since) c.dataset.since = now;
+      if (!on && since) { c.dataset.ms = (+c.dataset.ms || 0) + now - since; delete c.dataset.since; }
+      c.classList.toggle('run', on);
+      c.classList.toggle('timed', on || +c.dataset.ms > 0);
+    }
+  }
+}
+function elapsed(c) { return (+c.dataset.ms || 0) + (+c.dataset.since ? Date.now() - c.dataset.since : 0) }
+function fmt(ms) {
+  const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  return d ? `${d}d ${h % 24}h` : h ? `${h}h ${m % 60}m` : m ? `${m}m` : `${Math.floor(ms / 1000)}s`;
+}
+// Hovering a clock shows the time spent; works on the mini-mode pop-out too.
+addEventListener('pointerover', e => {
+  const ck = e.target.closest('.ck');
+  if (!ck) return;
+  const c = ck.closest('.card'), src = c === Z ? zc : c;
+  if (src) ck.title = `Time tracked: ${fmt(elapsed(src))}` + (src.classList.contains('run') ? ' (running)' : '');
+});
+
+function addColumn(o, before = null) {
+  const col = document.createElement('section');
+  col.className = 'col';
+  col.dataset.track = o.track ? '1' : '';
+  col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><div class="sb" hidden></div><input class="add" placeholder="+" title="Add a card" aria-label="Add a card" spellcheck="true" autocomplete="off">';
+  col.querySelector('span').textContent = o.name;
+  const list = col.querySelector('.list');
+  list.addEventListener('scroll', () => thumb(list));
+  if (o.cards) list.append(...o.cards.map(card));
+  col.querySelector('.add').addEventListener('keydown', e => {
+    const v = e.target.value.trim();
+    if (e.key === 'Enter' && v) {
+      list.append(card(v));
+      e.target.value = '';
+      list.scrollTop = list.scrollHeight;
+      sync();
+    } else if (e.key === 'Escape') e.target.blur();
   });
+  B.insertBefore(col, before);
+  return col;
+}
+
+function build(data) {
+  const cols = data && Array.isArray(data.cols) && data.cols.length ? data.cols : DEFAULT_COLS;
+  // Boards saved before columns were configurable: Doing tracks time.
+  for (const c of cols) addColumn({ ...c, track: c.track ?? /^doing$/i.test(c.name) });
   sync();
 }
 
@@ -254,6 +339,7 @@ B.addEventListener('pointerover', e => {
   zc = c;
   const r = c.getBoundingClientRect(), k = 12.5 / parseFloat(getComputedStyle(c).fontSize); // mini -> full size
   Z.firstChild.textContent = c.firstChild.textContent;
+  Z.className = c.className;
   const w = Math.min(r.width * k, innerWidth - 8);
   Z.style.cssText = `width:${w}px;transition:none;transform:none`;
   Z.hidden = false;
@@ -355,7 +441,7 @@ const lk = document.getElementById('lk');
 function setLocked(on) {
   document.body.classList.toggle('locked', on);
   lk.title = on ? 'Unlock' : 'Lock';
-  if (on) { end(); hideOpacity(); hideZoom(); if (document.activeElement !== lk) document.activeElement.blur(); }
+  if (on) { end(); hideSettings(); hideZoom(); if (document.activeElement !== lk) document.activeElement.blur(); }
   syncPassthrough();
 }
 async function syncPassthrough() {
@@ -403,27 +489,51 @@ addEventListener('keydown', e => {
   if (document.body.classList.contains('locked') && e.target !== lk) { e.preventDefault(); e.stopPropagation(); }
 }, true);
 
-// Opacity: right-click the top bar for a slider (10–100%, steps of 10).
-const op = document.getElementById('op'), opIn = op.querySelector('input'), opOut = op.querySelector('b');
+// Settings (cogwheel): opacity and columns. Right-click is left to the system.
+const st = document.getElementById('st'), stc = document.getElementById('stc'), cg = document.getElementById('cg');
+const opIn = document.getElementById('opIn'), opOut = document.getElementById('opOut');
 let opacity = 100;
 function setOpacity(v) {
   opacity = Math.min(100, Math.max(10, Math.round(v / 10) * 10 || 100));
   document.body.style.opacity = opacity === 100 ? '' : opacity / 100;
   opIn.value = opacity; opOut.textContent = opacity + '%';
 }
-function hideOpacity() { op.hidden = true }
 opIn.oninput = () => { setOpacity(+opIn.value); sync(); };
-addEventListener('contextmenu', e => {
-  if (e.target.closest('#h') && !document.body.classList.contains('locked')) {
-    e.preventDefault();
-    op.hidden = false;
-    op.style.left = Math.max(4, Math.min(e.clientX - op.offsetWidth / 2, innerWidth - op.offsetWidth - 4)) + 'px';
-  } else if (!e.target.closest('input,[contenteditable=true],[contenteditable=plaintext-only]')) {
-    e.preventDefault(); // keep the native menu only where it helps (spelling suggestions)
-  }
-});
-addEventListener('pointerdown', e => { if (!op.hidden && !op.contains(e.target)) hideOpacity() }, true);
-addEventListener('keydown', e => { if (e.key === 'Escape') hideOpacity() });
+function hideSettings() { st.hidden = true; document.body.classList.remove('st') }
+cg.onclick = () => {
+  if (!st.hidden) return hideSettings();
+  renderSettings(); st.hidden = false; document.body.classList.add('st');
+};
+function renderSettings() {
+  stc.replaceChildren();
+  const cols = [...B.children];
+  cols.forEach(col => {
+    const r = document.createElement('div');
+    r.className = 'cr';
+    r.innerHTML = '<input aria-label="Column name" spellcheck="false"><button class="tr">TRK</button><button class="rm" title="Remove column (its cards move to the neighbouring column)">×</button>'
+      .replace('TRK', CLOCK);
+    const name = r.firstChild, tr = r.children[1], rm = r.children[2];
+    name.value = col.querySelector('h2 span').textContent;
+    name.oninput = () => { col.querySelector('h2 span').textContent = name.value.trim() || 'Untitled'; sync(); };
+    const paint = () => { const on = col.dataset.track === '1'; tr.classList.toggle('on', on); tr.title = on ? 'Tracks time on cards (click to stop)' : 'Track time on cards in this column'; };
+    paint();
+    tr.onclick = () => { col.dataset.track = col.dataset.track === '1' ? '' : '1'; paint(); sync(); };
+    rm.disabled = cols.length < 2;
+    rm.onclick = () => {
+      const to = (col.previousElementSibling || col.nextElementSibling).querySelector('.list');
+      to.append(...col.querySelectorAll('.list > .card'));
+      col.remove(); sync(); renderSettings();
+    };
+    stc.append(r);
+  });
+}
+const CLOCK = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4v4l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+document.getElementById('stAdd').onclick = () => {
+  addColumn({ name: 'New column' }); sync(); renderSettings();
+  const inputs = stc.querySelectorAll('input'); inputs[inputs.length - 1].select();
+};
+addEventListener('pointerdown', e => { if (!st.hidden && !st.contains(e.target) && !cg.contains(e.target)) hideSettings() }, true);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !st.hidden) hideSettings() });
 
 const up = document.getElementById('up');
 async function checkUpdate() {
