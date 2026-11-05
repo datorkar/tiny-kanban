@@ -2,9 +2,9 @@
 
 A tiny, fast, cross-platform desktop kanban board. Three columns, one-sentence cards, drag and drop. That's it.
 
-Built with [Tauri 2](https://tauri.app): a ~3.5 MB Rust binary using the OS's own webview
+Built with [Tauri 2](https://tauri.app): a ~5 MB Rust binary using the OS's own webview
 (WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux). The UI is a single
-dependency-free HTML file (~8 KB), with no framework and no bundler.
+dependency-free HTML file (~12 KB), with no framework and no bundler.
 
 ## Usage
 
@@ -12,6 +12,21 @@ dependency-free HTML file (~8 KB), with no framework and no bundler.
 - **Move**: drag a card within a column or to another column.
 - **Edit**: double-click a card. Enter saves, Esc cancels, and clearing the text deletes the card.
 - **Delete**: hover over a card and click ×.
+- **Autocomplete**: while typing, words already on your board appear as faint text after the cursor. Press Tab or → to accept.
+- **Spell check**: uses the operating system's own spell checker and dictionaries. On Linux it follows your `LANG`
+  setting (e.g. `en_US`) and needs a Hunspell dictionary installed, e.g. `hunspell-en-us`. Most desktop distros ship one.
+- **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
+
+## Updates
+
+The app checks GitHub Releases for a new version on start and every 6 hours. When one is available, an
+**Update to x.y.z** button appears in the top strip. Click it to download, install and restart.
+Your board is saved first.
+
+- **Windows / macOS**: updates in place, using the same installer type you installed with (.exe or .msi).
+- **Linux .deb**: updates in place; you'll be asked for your password to install the package.
+- **Linux .rpm**, or a binary copied out of a package by hand: no auto-update. Download new versions from
+  [Releases](https://github.com/datorkar/tiny-kanban/releases).
 
 The board saves automatically to `board.json` in the app data directory:
 
@@ -40,7 +55,19 @@ Run workflow → tick "Publish a GitHub Release". That tags `v<version>` from `s
 
 See [Linux packages](#linux-packages) for why there's no AppImage.
 
-Builds are unsigned. On macOS, right-click the app and choose Open the first time. On Windows, choose
+### Releasing
+
+Updates are signed, and the app only installs updates signed with the project's key. CI needs the private key
+in a repository secret named **`TAURI_SIGNING_PRIVATE_KEY`** (Settings → Secrets and variables → Actions).
+If the key has a password, also add it as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Without the secret, CI still
+builds installers, but a release run will fail rather than publish a release that can't auto-update.
+The public key is in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+
+To release, bump `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`, then
+push a `v<version>` tag or use Run workflow as above. The release includes `latest.json`, which installed
+apps read to find the update.
+
+The installers themselves are not OS code-signed. On macOS, right-click the app and choose Open the first time. On Windows, choose
 "More info → Run anyway" in SmartScreen.
 
 ## Linux packages

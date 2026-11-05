@@ -58,7 +58,20 @@ jobs:
 
       - run: npm ci
 
-      - run: npx tauri build ${{ matrix.args }}
+      # Signs update bundles when the key secret is set; otherwise builds unsigned
+      # installers only (fine for CI, but releases need the key for auto-update).
+      - name: Build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          extra=()
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set; building without update signatures"
+            extra=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
+          fi
+          npx tauri build ${{ matrix.args }} "${extra[@]}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,6 +82,8 @@ jobs:
             ${{ matrix.out }}/msi/*.msi
             ${{ matrix.out }}/nsis/*.exe
             ${{ matrix.out }}/dmg/*.dmg
+            ${{ matrix.out }}/macos/*.app.tar.gz
+            ${{ matrix.out }}/**/*.sig
           if-no-files-found: error
 
   release:
@@ -100,10 +115,18 @@ jobs:
           done
           find dist -type f
 
+      - name: Updater manifest
+        run: |
+          python3 .github/scripts/latest_json.py dist "$GITHUB_REPOSITORY" "${{ steps.tag.outputs.name }}" > latest.json
+          cat latest.json
+          mkdir out
+          find dist -type f ! -name '*.sig' -exec mv {} out/ \;
+          mv latest.json out/
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           name: Tiny Kanban ${{ steps.tag.outputs.name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
-          files: dist/**/*
+          files: out/*

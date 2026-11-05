@@ -15,6 +15,9 @@ body{background:var(--bg);color:var(--fg);font:12.5px/1.35 system-ui,-apple-syst
 #h button{width:30px;height:22px;border:0;background:none;color:var(--mute);font:13px/1 system-ui,sans-serif;cursor:pointer}
 #h button:hover{background:#8883;color:var(--fg)}
 #h #cl:hover{background:#e5484d;color:#fff}
+#h #up{width:auto;height:16px;margin-right:4px;padding:0 7px;border-radius:8px;background:var(--acc);color:#fff;font:600 10px/16px system-ui,sans-serif}
+#h #up:hover{filter:brightness(1.1)}
+#g{position:fixed;z-index:8;pointer-events:none;color:var(--mute);white-space:pre}
 #b{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
 .col{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--col);border-radius:7px}
 .col h2{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:7px 8px 3px;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
@@ -35,8 +38,9 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 </style>
 </head>
 <body>
-<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
+<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="up" hidden></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
+<span id="g" hidden></span>
 <script>
 const COLS = ['To do', 'Doing', 'Done'];
 const B = document.getElementById('b');
@@ -61,6 +65,7 @@ function save() {
   return persist(JSON.stringify({ cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
 }
 function sync() {
+  indexWords();
   lists.forEach((l, i) => counts[i].textContent = l.children.length || '');
   clearTimeout(timer);
   timer = setTimeout(save, 120);
@@ -78,7 +83,7 @@ function build(data) {
   COLS.forEach((name, i) => {
     const col = document.createElement('section');
     col.className = 'col';
-    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><input class="add" placeholder="+ Add a card">';
+    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><input class="add" placeholder="+ Add a card" spellcheck="true" autocomplete="off">';
     col.querySelector('span').textContent = name;
     counts[i] = col.querySelector('h2 span+span');
     lists[i] = col.querySelector('.list');
@@ -108,6 +113,7 @@ B.addEventListener('dblclick', e => {
   const t = e.target.closest('.t');
   if (!t || t.isContentEditable) return;
   const old = t.textContent;
+  t.spellcheck = true;
   try { t.contentEditable = 'plaintext-only' } catch (_) { t.contentEditable = 'true' }
   t.focus();
   getSelection().selectAllChildren(t);
@@ -183,6 +189,88 @@ function end() {
 addEventListener('pointerup', end);
 addEventListener('pointercancel', end);
 addEventListener('blur', end);
+
+// Autocomplete: offer words already on the board as faint ghost text after
+// the caret. Tab or → accepts. Only at the end of the text being typed.
+const G = document.getElementById('g'), WORD = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
+let words = [], sugg = '', measure;
+function indexWords() {
+  const n = new Map();
+  for (const t of B.querySelectorAll('.t'))
+    for (const w of t.textContent.match(WORD) || [])
+      if (w.length > 2) { const k = w.toLowerCase(), e = n.get(k); e ? e.c++ : n.set(k, { w, c: 1 }) }
+  words = [...n.values()].sort((a, b) => b.c - a.c).map(e => e.w);
+}
+function hideGhost() { sugg = ''; G.hidden = true }
+function suggest(el) {
+  hideGhost();
+  const input = el.tagName === 'INPUT', cs = getComputedStyle(el);
+  let text, caret, x, top, h;
+  if (input) {
+    if (el.selectionStart !== el.selectionEnd) return;
+    text = el.value; caret = el.selectionStart;
+  } else {
+    const sel = getSelection();
+    if (!sel.isCollapsed || !sel.rangeCount) return;
+    const r = sel.getRangeAt(0), pre = r.cloneRange();
+    pre.selectNodeContents(el); pre.setEnd(r.endContainer, r.endOffset);
+    text = el.textContent; caret = pre.toString().length;
+    let rc = r.getClientRects()[0], right = false;
+    if (!rc && el.firstChild && el.firstChild.length) {
+      // WebKit can return no rect for a collapsed caret; measure the last char instead.
+      const lc = document.createRange(), n = el.firstChild;
+      lc.setStart(n, n.length - 1); lc.setEnd(n, n.length);
+      rc = lc.getBoundingClientRect(); right = true;
+    }
+    if (!rc) return;
+    x = right ? rc.right : rc.left; top = rc.top; h = rc.height;
+  }
+  if (caret !== text.length) return;
+  const m = text.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*$/u);
+  if (!m || m[0].length < 2) return;
+  const p = m[0].toLowerCase(), w = words.find(w => w.length > p.length && w.toLowerCase().startsWith(p));
+  if (!w) return;
+  if (input) {
+    const r = el.getBoundingClientRect();
+    measure = measure || document.createElement('canvas').getContext('2d');
+    measure.font = cs.font;
+    x = r.left + parseFloat(cs.paddingLeft) + measure.measureText(text).width - el.scrollLeft;
+    top = r.top + parseFloat(cs.paddingTop); h = parseFloat(cs.lineHeight);
+    if (x > r.right - parseFloat(cs.paddingRight)) return;
+  }
+  sugg = w.slice(p.length);
+  G.textContent = sugg;
+  G.style.font = cs.font;
+  G.style.cssText += `;left:${x}px;top:${top}px;line-height:${h}px`;
+  G.hidden = false;
+}
+B.addEventListener('input', e => suggest(e.target));
+B.addEventListener('keydown', e => {
+  if (sugg && (e.key === 'Tab' || e.key === 'ArrowRight')) {
+    e.preventDefault();
+    document.execCommand('insertText', false, sugg);
+  }
+  hideGhost();
+}, true);
+B.addEventListener('focusout', hideGhost);
+B.addEventListener('scroll', hideGhost, true);
+
+// Auto-update: check on start and every 6 hours; the header shows a button
+// when a new version is ready.
+const up = document.getElementById('up');
+async function checkUpdate() {
+  try {
+    const v = await invoke('check_update');
+    if (v) { up.textContent = 'Update to ' + v; up.hidden = false; }
+  } catch (_) {}
+}
+up.onclick = async () => {
+  up.disabled = true; up.textContent = 'Updating…';
+  if (timer) { clearTimeout(timer); await save(); }
+  try { await invoke('install_update') }
+  catch (e) { up.textContent = 'Update failed'; up.title = String(e); up.disabled = false; }
+};
+if (invoke) { setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 6 * 3600e3); }
 
 // Load
 (async () => {
