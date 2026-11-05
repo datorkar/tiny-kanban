@@ -22,7 +22,9 @@ body{color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-se
 #h #up{width:auto;height:16px;margin-right:4px;padding:0 7px;border-radius:8px;background:var(--acc);color:#fff;font:600 10px/16px system-ui,sans-serif}
 #h #up:hover{filter:brightness(1.1)}
 #h #mm{position:absolute;left:50%;top:0;width:30px;margin-left:-15px}
-#h #lk{width:26px}
+#h #lk,#h #tp{width:26px}
+#tp svg{width:11px;height:11px;display:block;margin:auto}
+.ontop #tp{color:var(--acc)}
 #lk svg{width:11px;height:11px;display:block;margin:auto}
 #lk .on,.locked #lk .off{display:none}
 .locked #lk .on{display:inline}
@@ -60,7 +62,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 </style>
 </head>
 <body>
-<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
+<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
 <div id="op" hidden>Opacity <input type="range" min="10" max="100" step="10" value="100"><b>100%</b></div>
@@ -85,7 +87,7 @@ function persist(json) {
 // The DOM is the model: read it back, update counts, save (debounced).
 function save() {
   timer = 0;
-  return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), locked: document.body.classList.contains('locked'), opacity, cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
+  return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), locked: document.body.classList.contains('locked'), ontop: document.body.classList.contains('ontop'), opacity, cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
 }
 function sync() {
   indexWords();
@@ -285,11 +287,30 @@ document.getElementById('mm').onclick = () => { document.body.classList.toggle('
 
 // Lock: everything except the lock button ignores mouse and keyboard.
 const lk = document.getElementById('lk');
+// Locked windows also let clicks through to whatever is behind them, except on
+// the lock button itself (where the OS supports it; see passthrough in main.rs).
 function setLocked(on) {
   document.body.classList.toggle('locked', on);
   lk.title = on ? 'Unlock' : 'Lock';
   if (on) { end(); hideOpacity(); if (document.activeElement !== lk) document.activeElement.blur(); }
+  syncPassthrough();
 }
+async function syncPassthrough() {
+  if (!invoke) return;
+  const on = document.body.classList.contains('locked'), r = lk.getBoundingClientRect();
+  const through = await invoke('passthrough', { keep: on ? [r.x, r.y, r.width, r.height] : null });
+  if (on && through) lk.title = 'Unlock (clicks pass through to the windows behind)';
+}
+addEventListener('resize', () => { if (document.body.classList.contains('locked')) syncPassthrough() });
+
+// Always on top
+const tp = document.getElementById('tp');
+function setOnTop(on) {
+  document.body.classList.toggle('ontop', on);
+  tp.title = on ? 'Always on top (on)' : 'Always on top';
+  if (invoke) invoke('set_on_top', { on });
+}
+tp.onclick = () => { setOnTop(!document.body.classList.contains('ontop')); sync(); };
 lk.onclick = () => { setLocked(!document.body.classList.contains('locked')); sync(); };
 addEventListener('keydown', e => {
   if (document.body.classList.contains('locked') && e.target !== lk) { e.preventDefault(); e.stopPropagation(); }
@@ -339,6 +360,7 @@ if (invoke) { setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 6 * 3600e3
   let data = null;
   try { data = raw && JSON.parse(raw) } catch (_) {}
   if (data && data.mini) document.body.classList.add('mini');
+  if (data && data.ontop) setOnTop(true);
   if (data && data.locked) setLocked(true);
   if (data && data.opacity) setOpacity(data.opacity);
   build(data);

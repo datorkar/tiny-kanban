@@ -18,8 +18,12 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits, and a card
   grows back to full size while you hover over it, drag it or edit it. The dot is smaller while mini mode is on, and the
   setting is remembered.
-- **Lock**: click the padlock in the top strip. While locked, nothing responds to the mouse or keyboard except the
-  padlock, so you can't move, edit or close anything by accident. The lock is remembered across restarts.
+- **Always on top**: click the pin in the top strip to keep the window above all others. It's remembered across restarts.
+- **Lock**: click the padlock in the top strip. While locked, the board ignores the mouse and keyboard, and clicks pass
+  straight through to the windows behind it. Only the padlock still responds. Combined with always-on-top and low
+  opacity, the board becomes a see-through overlay you can work underneath. The lock is remembered across restarts.
+  Under Linux Wayland, apps can't track the mouse outside their own window, so there the lock still blocks input but
+  doesn't pass clicks through.
 - **Opacity**: right-click the top strip for a slider, 10–100% in 10% steps. It's remembered across restarts. On Linux,
   see-through needs a compositing desktop, which all the common desktops have.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
