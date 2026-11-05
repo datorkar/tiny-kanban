@@ -35,7 +35,8 @@ npm run build   # release bundles in src-tauri/target/release/bundle
 
 GitHub Actions builds for Linux (.deb, .rpm), Windows (.msi, .exe), and macOS
 (universal .dmg) on every push. You can download the installers from the run's artifacts. Pushing a `v*` tag
-also publishes them as a GitHub Release.
+also publishes them as a GitHub Release. You can do the same without a local tag: Actions → Build →
+Run workflow → tick "Publish a GitHub Release". That tags `v<version>` from `src-tauri/tauri.conf.json`.
 
 See [Linux packages](#linux-packages) for why there's no AppImage.
 
