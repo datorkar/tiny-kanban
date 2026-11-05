@@ -15,6 +15,9 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Autocomplete**: while typing, words already on your board appear as faint text after the cursor. Press Tab or → to accept.
 - **Spell check**: uses the operating system's own spell checker and dictionaries. On Linux it follows your `LANG`
   setting (e.g. `en_US`) and needs a Hunspell dictionary installed, e.g. `hunspell-en-us`. Most desktop distros ship one.
+- **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits, and a card
+  grows back to full size while you hover over it, drag it or edit it. The dot is smaller while mini mode is on, and the
+  setting is remembered.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
 
 ## Updates
