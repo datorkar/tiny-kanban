@@ -41,9 +41,16 @@ body{color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-se
 #g{position:fixed;z-index:8;pointer-events:none;color:var(--mute);white-space:pre}
 .col h2 span:first-child{overflow:hidden;text-overflow:ellipsis}
 #b{--f:12.5px;font-size:var(--f);flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
-.mini #b{--f:6.25px}
-.col{flex:1;min-width:0;min-height:0;overflow:clip;display:flex;flex-direction:column;background:var(--col);border-radius:7px}
+.mini #b{--f:7.25px}
+.col{position:relative;flex:1;min-width:0;min-height:0;overflow:clip;display:flex;flex-direction:column;background:var(--col);border-radius:7px}
 .col h2{white-space:nowrap;gap:.4em;font-size:.8em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:.7em .8em .3em;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
+/* Native scrollbars take width from the cards, so they're hidden and a 3px
+   overlay thumb (.sb) is drawn on top of the cards' right edge instead. */
+.list{scrollbar-width:none}
+.list::-webkit-scrollbar{display:none}
+.sb{position:absolute;right:0;top:0;width:7px;padding:0 1px 0 3px;background:#8889;background-clip:content-box;border-radius:3px;opacity:0;transition:opacity .2s;cursor:default}
+.col:hover .sb,.sb.on{opacity:1}
+.sb[hidden]{display:none}
 .list{flex:1;min-height:0;overflow-y:auto;padding:.24em .4em;display:flex;flex-direction:column;gap:.32em}
 .card{position:relative;background:var(--card);border-radius:.4em;padding:.4em 1.6em .4em .56em;box-shadow:var(--sh);transition:font-size .15s ease-out;cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
 .card .t{outline:none;display:block;min-height:1.35em}
@@ -105,6 +112,7 @@ function save() {
   return persist(JSON.stringify({ mini: document.body.classList.contains('mini'), locked: document.body.classList.contains('locked'), ontop: document.body.classList.contains('ontop'), opacity, cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
 }
 function sync() {
+  lists.forEach(thumb);
   indexWords();
   lists.forEach((l, i) => counts[i].textContent = l.children.length || '');
   clearTimeout(timer);
@@ -123,10 +131,11 @@ function build(data) {
   COLS.forEach((name, i) => {
     const col = document.createElement('section');
     col.className = 'col';
-    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><input class="add" placeholder="+" title="Add a card" aria-label="Add a card" spellcheck="true" autocomplete="off">';
+    col.innerHTML = '<h2><span></span><span></span></h2><div class="list"></div><div class="sb" hidden></div><input class="add" placeholder="+" title="Add a card" aria-label="Add a card" spellcheck="true" autocomplete="off">';
     col.querySelector('span').textContent = name;
     counts[i] = col.querySelector('h2 span+span');
     lists[i] = col.querySelector('.list');
+    lists[i].addEventListener('scroll', () => thumb(lists[i]));
     const saved = data && data.cols && data.cols[i];
     if (saved) lists[i].append(...saved.cards.map(card));
     col.querySelector('.add').addEventListener('keydown', e => {
@@ -239,7 +248,7 @@ B.addEventListener('pointerover', e => {
   if (!c || c === zc || d || e.pointerType === 'touch' || !document.body.classList.contains('mini') ||
       document.body.classList.contains('locked') || c.querySelector('[contenteditable=true],[contenteditable=plaintext-only]')) return;
   zc = c;
-  const r = c.getBoundingClientRect(), k = 2; // full size is 2x mini
+  const r = c.getBoundingClientRect(), k = 12.5 / parseFloat(getComputedStyle(c).fontSize); // mini -> full size
   Z.firstChild.textContent = c.firstChild.textContent;
   const w = Math.min(r.width * k, innerWidth - 8);
   Z.style.cssText = `width:${w}px;transition:none;transform:none`;
@@ -352,6 +361,30 @@ async function syncPassthrough() {
   if (on && through) lk.title = 'Unlock (clicks pass through to the windows behind)';
 }
 addEventListener('resize', () => { if (document.body.classList.contains('locked')) syncPassthrough() });
+
+// Overlay scrollbar thumbs: 3px, drawn over the cards so they don't narrow them.
+function thumb(l) {
+  const sb = l.nextSibling, { scrollTop: t, scrollHeight: sh, clientHeight: ch } = l;
+  if (sh <= ch + 1) { sb.hidden = true; return; }
+  const h = Math.max(16, ch * ch / sh);
+  sb.hidden = false;
+  sb.style.height = h + 'px';
+  sb.style.transform = `translateY(${l.offsetTop + t / (sh - ch) * (ch - h)}px)`;
+}
+addEventListener('resize', () => lists.forEach(thumb));
+B.addEventListener('transitionend', () => lists.forEach(thumb)); // mini-mode size change
+B.addEventListener('input', e => { const l = e.target.closest('.list'); if (l) thumb(l) }); // editing grows a card
+B.addEventListener('pointerdown', e => {
+  const sb = e.target.closest('.sb');
+  if (!sb || e.button !== 0) return;
+  e.preventDefault();
+  const l = sb.previousSibling, y0 = e.clientY, t0 = l.scrollTop;
+  const k = (l.scrollHeight - l.clientHeight) / (l.clientHeight - sb.offsetHeight);
+  sb.classList.add('on'); sb.setPointerCapture(e.pointerId);
+  const move = ev => { l.scrollTop = t0 + (ev.clientY - y0) * k };
+  sb.addEventListener('pointermove', move);
+  sb.addEventListener('lostpointercapture', () => { sb.removeEventListener('pointermove', move); sb.classList.remove('on') }, { once: true });
+});
 
 // Always on top
 const tp = document.getElementById('tp');
