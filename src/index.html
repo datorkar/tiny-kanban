@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tiny Kanban</title>
 <style>
-:root{--bg:#f4f4f5;--col:#e9e9ec;--card:#fff;--fg:#1c1c1f;--mute:#77777f;--acc:#4f6ef7;--sh:0 1px 2px #0002;color-scheme:light dark}
+:root{--sys:system-ui,-apple-system,"Segoe UI",sans-serif;--bg:#f4f4f5;--col:#e9e9ec;--card:#fff;--fg:#1c1c1f;--mute:#77777f;--acc:#4f6ef7;--sh:0 1px 2px #0002;color-scheme:light dark}
 @media (prefers-color-scheme:dark){:root{--bg:#18181b;--col:#232327;--card:#2e2e33;--fg:#ececf1;--mute:#8d8d96;--sh:0 1px 2px #0006}}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%;overflow:clip}
@@ -13,7 +13,7 @@ html{background:transparent}
 /* Background on a layer, not on body: a body background is copied to the page
    canvas (CSS background propagation), which body's opacity doesn't fade. */
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--bg)}
-body{color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;display:flex;flex-direction:column}
+body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;flex-direction:column}
 #h{flex:none;position:relative;height:22px;display:flex;align-items:center;padding-left:10px;user-select:none;-webkit-user-select:none;cursor:default}
 #h span{flex:1;font-size:10.5px;font-weight:600;color:var(--mute);pointer-events:none}
 #h button{width:30px;height:22px;border:0;background:none;color:var(--mute);font:13px/1 system-ui,sans-serif;cursor:pointer}
@@ -42,6 +42,9 @@ body{color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-se
 .col h2 span:first-child{overflow:hidden;text-overflow:ellipsis}
 #b{--f:12.5px;font-size:var(--f);flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
 .mini #b{--f:7.25px}
+/* Fonts tuned for tiny sizes in mini mode (macOS's system font already adapts) */
+.os-win .mini #b{font-family:Tahoma,var(--sys)}
+.os-linux .mini #b{font-family:"DejaVu Sans",var(--sys)}
 .col{position:relative;flex:1;min-width:0;min-height:0;overflow:clip;display:flex;flex-direction:column;background:var(--col);border-radius:7px}
 .col h2{white-space:nowrap;gap:.4em;font-size:.8em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:.7em .8em .3em;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
 /* Native scrollbars take width from the cards, so they're hidden and a 3px
@@ -79,7 +82,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
    a hovered card pops out as a floating copy (#z) that doesn't move anything */
 #z{position:fixed;z-index:7;cursor:grab;box-shadow:0 6px 20px #0004;transition:transform .15s ease-out}
 #z[hidden]{display:none}
-.mini .card.drag,.mini .card:has([contenteditable=plaintext-only]),.mini .card:has([contenteditable=true]),.mini .add:focus{font-size:12.5px}
+.mini .card.drag,.mini .card:has([contenteditable=plaintext-only]),.mini .card:has([contenteditable=true]),.mini .add:focus{font-size:12.5px;font-family:var(--sys)}
 </style>
 </head>
 <body>
@@ -90,6 +93,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div id="op" hidden>Opacity <input type="range" min="10" max="100" step="10" value="100"><b>100%</b></div>
 <script>
 const COLS = ['To do', 'Doing', 'Done'];
+document.documentElement.classList.add(/Windows/.test(navigator.userAgent) ? 'os-win' : /Mac/.test(navigator.userAgent) ? 'os-mac' : 'os-linux');
 const B = document.getElementById('b');
 const invoke = window.__TAURI__ && window.__TAURI__.core.invoke;
 let lists = [], counts = [], timer;
