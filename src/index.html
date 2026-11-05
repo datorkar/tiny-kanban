@@ -9,27 +9,33 @@
 @media (prefers-color-scheme:dark){:root{--bg:#18181b;--col:#232327;--card:#2e2e33;--fg:#ececf1;--mute:#8d8d96;--sh:0 1px 2px #0006}}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%}
-body{background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
-#b{display:flex;gap:12px;height:100%;padding:12px}
-.col{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--col);border-radius:10px}
-.col h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:12px 12px 6px;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
-.list{flex:1;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column;gap:6px}
-.card{position:relative;background:var(--card);border-radius:7px;padding:8px 26px 8px 10px;box-shadow:var(--sh);cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
-.card .t{outline:none;display:block;min-height:1.4em}
+body{background:var(--bg);color:var(--fg);font:12.5px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;display:flex;flex-direction:column}
+#h{flex:none;height:22px;display:flex;align-items:center;padding-left:10px;user-select:none;-webkit-user-select:none;cursor:default}
+#h span{flex:1;font-size:10.5px;font-weight:600;color:var(--mute);pointer-events:none}
+#h button{width:30px;height:22px;border:0;background:none;color:var(--mute);font:13px/1 system-ui,sans-serif;cursor:pointer}
+#h button:hover{background:#8883;color:var(--fg)}
+#h #cl:hover{background:#e5484d;color:#fff}
+#b{flex:1;min-height:0;display:flex;gap:6px;padding:0 6px 6px}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--col);border-radius:7px}
+.col h2{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:7px 8px 3px;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
+.list{flex:1;overflow-y:auto;padding:3px 5px;display:flex;flex-direction:column;gap:4px}
+.card{position:relative;background:var(--card);border-radius:5px;padding:5px 20px 5px 7px;box-shadow:var(--sh);cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
+.card .t{outline:none;display:block;min-height:1.35em}
 .card .t[contenteditable=plaintext-only],.card .t[contenteditable=true]{cursor:text;user-select:text;-webkit-user-select:text}
-.card:has([contenteditable=plaintext-only]),.card:has([contenteditable=true]){box-shadow:0 0 0 2px var(--acc)}
-.x{position:absolute;top:5px;right:5px;border:0;background:none;color:var(--mute);font-size:15px;line-height:1;width:18px;height:18px;border-radius:4px;cursor:pointer;opacity:0}
+.card:has([contenteditable=plaintext-only]),.card:has([contenteditable=true]){box-shadow:0 0 0 1.5px var(--acc)}
+.x{position:absolute;top:3px;right:3px;border:0;background:none;color:var(--mute);font-size:13px;line-height:1;width:16px;height:16px;border-radius:3px;cursor:pointer;opacity:0}
 .card:hover .x{opacity:1}
 .x:hover{background:#8883;color:var(--fg)}
-.drag{position:fixed;left:0;top:0;z-index:9;pointer-events:none;cursor:grabbing;box-shadow:0 8px 24px #0004;will-change:transform}
-.ph{border-radius:7px;background:#8882;outline:2px dashed #8886;outline-offset:-2px;flex:none}
-.add{margin:6px 8px 8px;padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--fg);font:inherit;outline:none}
+.drag{position:fixed;left:0;top:0;z-index:9;pointer-events:none;cursor:grabbing;box-shadow:0 6px 18px #0004;will-change:transform}
+.ph{border-radius:5px;background:#8882;outline:1.5px dashed #8886;outline-offset:-1.5px;flex:none}
+.add{margin:3px 5px 5px;padding:5px 7px;border:0;border-radius:5px;background:transparent;color:var(--fg);font:inherit;outline:none}
 .add::placeholder{color:var(--mute)}
 .add:hover,.add:focus{background:var(--card)}
 body.dragging,body.dragging *{cursor:grabbing!important}
 </style>
 </head>
 <body>
+<header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <script>
 const COLS = ['To do', 'Doing', 'Done'];
@@ -37,19 +43,27 @@ const B = document.getElementById('b');
 const invoke = window.__TAURI__ && window.__TAURI__.core.invoke;
 let lists = [], counts = [], timer;
 
+const win = window.__TAURI__ && window.__TAURI__.window.getCurrentWindow();
+document.getElementById('mn').onclick = () => win && win.minimize();
+document.getElementById('cl').onclick = async () => {
+  if (timer) { clearTimeout(timer); await save(); }
+  win ? win.close() : window.close();
+};
+
 function persist(json) {
-  if (invoke) invoke('save', { data: json });
+  if (invoke) return invoke('save', { data: json });
   else try { localStorage.setItem('kanban', json) } catch (_) {}
 }
 
 // The DOM is the model: read it back, update counts, save (debounced).
+function save() {
+  timer = 0;
+  return persist(JSON.stringify({ cols: lists.map((l, i) => ({ name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) })) }));
+}
 function sync() {
-  const cols = lists.map((l, i) => {
-    counts[i].textContent = l.children.length || '';
-    return { name: COLS[i], cards: [...l.querySelectorAll('.t')].map(t => t.textContent) };
-  });
+  lists.forEach((l, i) => counts[i].textContent = l.children.length || '');
   clearTimeout(timer);
-  timer = setTimeout(() => persist(JSON.stringify({ cols })), 120);
+  timer = setTimeout(save, 120);
 }
 
 function card(text) {
