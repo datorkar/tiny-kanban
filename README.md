@@ -30,10 +30,11 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
   Moving it out stops the clock but keeps the time, and the clock stays on the card. Hover the clock to see the total
   time tracked. Time only counts while the app is running: not while it's closed, and not while the computer sleeps.
 - **Settings**: click the cogwheel in the top strip. The menu is always regular size, even in mini mode. It has:
-  - **Opacity**: 10–100% in 10% steps. On Linux, a see-through window needs a compositing desktop, which all the common
+  - **Opacity**: 30–100% in 10% steps. On Linux, a see-through window needs a compositing desktop, which all the common
     desktops have.
   - **Columns**: rename, add or remove (a removed column's cards move to its neighbour), drag ⠿ to reorder, and choose
     which columns track time with the clock button.
+  - **Accent colour**: Blue, Terracotta, Forest green or Soft magenta.
   - **Theme**: System, Light or Dark.
   - **Shortcuts**: system-wide keys to lock/unlock (default Ctrl+Alt+L, ⌘⌥L on Mac) and to move the window under the mouse
     (default Ctrl+Alt+M, ⌘⌥M). Click one and press new keys to change it; Backspace turns it off. The lock shortcut also
