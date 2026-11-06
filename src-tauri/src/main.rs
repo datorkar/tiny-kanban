@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod efficiency;
+
 use std::{
     fs,
     path::PathBuf,
@@ -236,10 +238,20 @@ fn main() {
                             .unwrap_or_else(|| "en_US".into());
                         ctx.set_spell_checking_languages(&[lang.as_str()]);
                         ctx.set_spell_checking_enabled(true);
+                        // One small page: keep WebKit's caches minimal.
+                        ctx.set_cache_model(webkit2gtk::CacheModel::DocumentViewer);
                     }
                 });
             }
             Ok(())
+        })
+        // Save power while the window isn't focused; full speed when it is.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(focused) = event {
+                if let Some(w) = window.app_handle().get_webview_window("main") {
+                    efficiency::set(&w, !*focused);
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             load,

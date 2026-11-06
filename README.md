@@ -40,6 +40,9 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
     unlocks while clicks pass through. Not available under Linux Wayland, where apps can't register global shortcuts.
   - **Launch at login**.
   - **Archive**: restore or permanently delete archived cards.
+- **Low power when in the background**: while the window isn't focused (e.g. as a locked overlay), Windows runs the app
+  and its WebView2 processes in efficiency mode and trims their memory; macOS runs it as background work. Clicking into
+  the window switches back to full speed. Clocks redraw once a second, and not at all when hidden.
 - **Remembers its state**: window position and size, plus all settings and the board, are saved however the app is
   closed.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
