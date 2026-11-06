@@ -11,7 +11,8 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Add**: click the **+** at the bottom of a column, type and press Enter. Focus stays put, so you can add several in a row.
 - **Move**: drag a card within a column or to another column.
 - **Edit**: double-click a card. Enter saves, Esc cancels, and clearing the text deletes the card.
-- **Delete**: hover over a card and click ×.
+- **Archive**: hover over a card and click × (clearing a card's text does the same). Archived cards are listed under
+  Archive in settings, where you can restore them to their column or delete them permanently.
 - **Autocomplete**: while typing, words already on your board appear as faint text after the cursor. Press Tab or → to accept.
 - **Spell check**: uses the operating system's own spell checker and dictionaries. On Linux it follows your `LANG`
   setting (e.g. `en_US`) and needs a Hunspell dictionary installed, e.g. `hunspell-en-us`. Most desktop distros ship one.
@@ -28,10 +29,19 @@ dependency-free HTML file (~12 KB), with no framework and no bundler.
 - **Time tracking**: while a card is in a time-tracking column (by default **Doing**), a small clock on it ticks.
   Moving it out stops the clock but keeps the time, and the clock stays on the card. Hover the clock to see the total
   time tracked. Time only counts while the app is running: not while it's closed, and not while the computer sleeps.
-- **Settings**: click the cogwheel in the top strip. It has an opacity slider (10–100%, 10% steps) and the column list:
-  rename, add or remove columns (a removed column's cards move to its neighbour), and choose which columns track time
-  with the clock button. The menu is always regular size, even in mini mode. On Linux, a see-through window needs a
-  compositing desktop, which all the common desktops have.
+- **Settings**: click the cogwheel in the top strip. The menu is always regular size, even in mini mode. It has:
+  - **Opacity**: 10–100% in 10% steps. On Linux, a see-through window needs a compositing desktop, which all the common
+    desktops have.
+  - **Columns**: rename, add or remove (a removed column's cards move to its neighbour), drag ⠿ to reorder, and choose
+    which columns track time with the clock button.
+  - **Theme**: System, Light or Dark.
+  - **Shortcuts**: system-wide keys to lock/unlock (default Ctrl+Alt+L, ⌘⌥L on Mac) and to move the window under the mouse
+    (default Ctrl+Alt+M, ⌘⌥M). Click one and press new keys to change it; Backspace turns it off. The lock shortcut also
+    unlocks while clicks pass through. Not available under Linux Wayland, where apps can't register global shortcuts.
+  - **Launch at login**.
+  - **Archive**: restore or permanently delete archived cards.
+- **Remembers its state**: window position and size, plus all settings and the board, are saved however the app is
+  closed.
 - **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
 
 ## Updates
