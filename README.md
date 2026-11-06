@@ -31,6 +31,8 @@ browser.
 - **Cards:** drag and drop, double-click to edit, autocomplete from words already on the board, and the OS's own spell
   check. × archives a card; restore it or delete it for good from settings.
 - **Columns:** rename, add, remove, drag to reorder, and choose which columns track time.
+- **Timers:** click a card's clock to set a timer in minutes. When it's up you get an OS notification, or, where
+  notifications aren't available, a soft ping and the window at full opacity for a few seconds.
 - **Overlay:** always on top, opacity 30–100%, and a lock that passes clicks through to the windows behind.
 - **Shortcuts (system-wide):** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> locks/unlocks, and
   <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).

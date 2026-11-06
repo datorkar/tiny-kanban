@@ -18,7 +18,8 @@
         "decorations": false,
         "shadow": true,
         "dragDropEnabled": false,
-        "transparent": true
+        "transparent": true,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
       }
     ],
     "security": {
