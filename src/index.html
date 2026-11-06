@@ -82,7 +82,7 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 .web .os-only{display:none}
 /* Time tracking clock: ticks once a second while the card is in a tracking column */
 .ck{position:absolute;top:.42em;right:1.5em;width:.95em;height:.95em;color:var(--mute);display:none}
-.timed{padding-right:2.6em}
+.card.timed{padding-right:2.6em} /* .card.x: must beat the .card padding rule further down */
 .timed .ck{display:block}
 .run .ck{color:var(--acc)}
 .ck svg{width:100%;height:100%;display:block;overflow:visible}
