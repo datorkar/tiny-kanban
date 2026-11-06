@@ -1,157 +1,71 @@
 # Tiny Kanban
 
-A tiny, fast, cross-platform desktop kanban board. Three columns, one-sentence cards, drag and drop. That's it.
+<p align="center"><img src="docs/screenshots/board-light.png" alt="Tiny Kanban board in light mode" width="760"></p>
 
-Built with [Tauri 2](https://tauri.app): a ~5 MB Rust binary using the OS's own webview
-(WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux). The UI is a single
-dependency-free HTML file (~12 KB), with no framework and no bundler.
+A tiny, fast desktop kanban board for Windows, macOS and Linux. One sentence per card, drag between columns,
+nothing else in the way. Installers are about 2 MB, because it uses your OS's own web engine instead of bundling a
+browser.
 
-## Usage
+## What it's good for
 
-- **Add**: click the **+** at the bottom of a column, type and press Enter. Focus stays put, so you can add several in a row.
-- **Move**: drag a card within a column or to another column.
-- **Edit**: double-click a card. Enter saves, Esc cancels, and clearing the text deletes the card.
-- **Archive**: hover over a card and click × (clearing a card's text does the same). Archived cards are listed under
-  Archive in settings, where you can restore them to their column or delete them permanently.
-- **Autocomplete**: while typing, words already on your board appear as faint text after the cursor. Press Tab or → to accept.
-- **Spell check**: uses the operating system's own spell checker and dictionaries. On Linux it follows your `LANG`
-  setting (e.g. `en_US`) and needs a Hunspell dictionary installed, e.g. `hunspell-en-us`. Most desktop distros ship one.
-- **Mini mode**: click the dot in the middle of the top strip. Text shrinks to half size so more fits. Hovering a
-  card pops out a full-size copy over the board without moving other cards; you can drag it, double-click it to edit,
-  or use its × to delete. Cards also return to full size while being dragged or edited. The dot is smaller while mini mode is on, and the
-  setting is remembered.
-- **Always on top**: click the pin in the top strip to keep the window above all others. It's remembered across restarts.
-- **Lock**: click the padlock in the top strip. While locked, the board ignores the mouse and keyboard, and clicks pass
-  straight through to the windows behind it. Only the padlock still responds. Combined with always-on-top and low
-  opacity, the board becomes a see-through overlay you can work underneath. The lock is remembered across restarts.
-  Under Linux Wayland, apps can't track the mouse outside their own window, so there the lock still blocks input but
-  doesn't pass clicks through.
-- **Time tracking**: while a card is in a time-tracking column (by default **Doing**), a small clock on it ticks.
-  Moving it out stops the clock but keeps the time, and the clock stays on the card. Hover the clock to see the total
-  time tracked. Time only counts while the app is running: not while it's closed, and not while the computer sleeps.
-- **Settings**: click the cogwheel in the top strip. The menu is always regular size, even in mini mode. It has:
-  - **Opacity**: 30–100% in 10% steps. On Linux, a see-through window needs a compositing desktop, which all the common
-    desktops have.
-  - **Columns**: rename, add or remove (a removed column's cards move to its neighbour), drag ⠿ to reorder, and choose
-    which columns track time with the clock button.
-  - **Accent colour**: Blue, Terracotta, Forest green or Soft magenta.
-  - **Theme**: System, Light or Dark.
-  - **Shortcuts**: system-wide keys to lock/unlock (default Ctrl+Alt+L, ⌘⌥L on Mac) and to move the window under the mouse
-    (default Ctrl+Alt+M, ⌘⌥M). Click one and press new keys to change it; Backspace turns it off. The lock shortcut also
-    unlocks while clicks pass through. Not available under Linux Wayland, where apps can't register global shortcuts.
-  - **Launch at login**.
-  - **Archive**: restore or permanently delete archived cards.
-- **Low power when in the background**: while the window isn't focused (e.g. as a locked overlay), Windows runs the app
-  and its WebView2 processes in efficiency mode and trims their memory; macOS runs it as background work. Clicking into
-  the window switches back to full speed. Clocks redraw once a second, and not at all when hidden.
-- **Remembers its state**: window position and size, plus all settings and the board, are saved however the app is
-  closed.
-- **Window**: there's no OS title bar. Drag the thin strip at the top to move the window, and double-click it to maximise.
+- **A to-do list that sits on top of your work.** Pin it on top, turn the opacity down and lock it: clicks pass
+  straight through to the window underneath. It becomes a see-through overlay you glance at, not a window you manage.
+- **Seeing where the time went.** Cards in **Doing** get a small ticking clock. Hover it to see how long the card has
+  been in progress. The clock pauses while the app is closed or the computer sleeps.
+- **Staying small.** Mini mode shrinks the text so a whole board fits in a corner of the screen, and hovering a card
+  pops it out at full size.
+- **Not being another heavy app.** It runs in efficiency mode while you're not using it. There's no account and no
+  cloud: your board is a JSON file on your computer.
 
-## Updates
+## Screenshots
 
-The app checks GitHub Releases for a new version on start and every 6 hours. When one is available, an
-**Update to x.y.z** button appears in the top strip. Click it to download, install and restart.
-Your board is saved first.
+| | |
+|:-:|:-:|
+| <img src="docs/screenshots/board-dark.png" alt="Dark mode with terracotta accent"> | <img src="docs/screenshots/mini-mode.png" alt="Mini mode with a card popped out"> |
+| Dark mode, terracotta accent | Mini mode: hover a card to read it full size |
+| <img src="docs/screenshots/settings.png" alt="Settings panel"> | <img src="docs/screenshots/overlay.png" alt="Locked see-through board over a code editor"> |
+| Settings: columns, colours, shortcuts, archive | Locked at 70% opacity over an editor; clicks go through |
 
-- **Windows / macOS**: updates in place, using the same installer type you installed with (.exe or .msi).
-- **Linux .deb**: updates in place; you'll be asked for your password to install the package.
-- **Linux .rpm**, or a binary copied out of a package by hand: no auto-update. Download new versions from
-  [Releases](https://github.com/datorkar/tiny-kanban/releases).
+## Highlights
 
-The board saves automatically to `board.json` in the app data directory:
+- **Cards:** drag and drop, double-click to edit, autocomplete from words already on the board, and the OS's own spell
+  check. × archives a card; restore it or delete it for good from settings.
+- **Columns:** rename, add, remove, drag to reorder, and choose which columns track time.
+- **Overlay:** always on top, opacity 30–100%, and a lock that passes clicks through to the windows behind.
+- **Shortcuts (system-wide):** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> locks/unlocks, and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).
+  Both can be changed in settings.
+- **Looks:** system/light/dark theme and four accent colours. No title bar, just a thin strip to drag.
+- **Remembers everything:** board, settings, and window position and size. It can launch at login.
+- **Updates itself** from GitHub Releases (signed); an **Update** button appears when there's a new version.
 
-| OS      | Path |
-|---------|------|
-| Linux   | `~/.local/share/app.tinykanban/board.json` |
-| macOS   | `~/Library/Application Support/app.tinykanban/board.json` |
-| Windows | `%APPDATA%\app.tinykanban\board.json` |
+## Install
 
-## Develop
+Download the latest version from [**Releases**](https://github.com/datorkar/tiny-kanban/releases/latest):
 
-Requirements: Rust (stable), Node 18+, and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
-
-```bash
-npm install
-npm run dev     # run with hot reload
-npm run build   # release bundles in src-tauri/target/release/bundle
-```
-
-## CI
-
-GitHub Actions builds for Linux (.deb, .rpm), Windows (.msi, .exe), and macOS
-(universal .dmg) on every push. You can download the installers from the run's artifacts. Pushing a `v*` tag
-also publishes them as a GitHub Release. You can do the same without a local tag: Actions → Build →
-Run workflow → tick "Publish a GitHub Release". That tags `v<version>` from `src-tauri/tauri.conf.json`.
-
-See [Linux packages](#linux-packages) for why there's no AppImage.
-
-### Releasing
-
-Updates are signed, and the app only installs updates signed with the project's key. CI needs the private key
-in a repository secret named **`TAURI_SIGNING_PRIVATE_KEY`** (Settings → Secrets and variables → Actions).
-If the key has a password, also add it as `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Without the secret, CI still
-builds installers, but a release run will fail rather than publish a release that can't auto-update.
-The public key is in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
-
-To release, bump `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`, then
-push a `v<version>` tag or use Run workflow as above. The release includes `latest.json`, which installed
-apps read to find the update.
-
-The installers themselves are not OS code-signed. On macOS, right-click the app and choose Open the first time. On Windows, choose
-"More info → Run anyway" in SmartScreen.
-
-## Linux packages
-
-Linux builds ship only as **`.deb`** (Debian, Ubuntu, Mint, Pop!_OS, …) and **`.rpm`** (Fedora, RHEL, …).
-Each is about 1.4 MB.
-
-### Why there's no AppImage
-
-Tiny Kanban doesn't ship its own browser engine. It uses the system's WebKitGTK, which is why it's so small.
-An AppImage has to work without relying on system libraries, so it bundles its own copy of WebKitGTK,
-GTK and their dependencies. That makes it roughly **80 MB**, about 60× bigger, for a slower-starting app
-that also misses your distro's WebKit security updates. That cost isn't worth it for a 3.5 MB app.
-
-### Running on other distros
-
-The app needs only two system libraries: **WebKitGTK 4.1** and **GTK 3**. The released binaries are built on
-Ubuntu 22.04, so they also need **glibc 2.35 or newer**, which any distro from 2022 onward has.
-
-**1. Install the runtime libraries**
-
-| Distro | Command |
+| OS | File |
 |---|---|
-| Arch / Manjaro / EndeavourOS | `sudo pacman -S webkit2gtk-4.1` |
-| openSUSE | `sudo zypper install libwebkit2gtk-4_1-0` |
-| Void | `sudo xbps-install webkit2gtk` |
-| Alpine | `sudo apk add webkit2gtk-4.1` |
-| Gentoo | `sudo emerge net-libs/webkit-gtk:4.1` |
+| Windows | `…_x64-setup.exe` (or `.msi`) |
+| macOS (Apple Silicon and Intel) | `…_universal.dmg` |
+| Debian, Ubuntu, Mint… | `…_amd64.deb` |
+| Fedora, RHEL… | `….x86_64.rpm` (doesn't auto-update) |
 
-**2a. Use the prebuilt binary from the `.deb`** (it's a self-contained executable)
+The installers aren't OS code-signed. On macOS, right-click the app and choose **Open** the first time. On
+Windows, choose **More info → Run anyway**. For other Linux distros and Wayland notes, see
+[docs/linux.md](docs/linux.md).
 
-```bash
-mkdir tk && cd tk
-ar x ../tiny-kanban_*_amd64.deb data.tar.gz   # or: bsdtar -xf ../tiny-kanban_*.deb
-tar xf data.tar.gz
-sudo cp usr/bin/tiny-kanban /usr/local/bin/
-sudo cp "usr/share/applications/Tiny Kanban.desktop" /usr/share/applications/   # optional: app menu entry
-sudo cp -r usr/share/icons/hicolor /usr/share/icons/                             # optional: icon
-```
+Your board is saved in `board.json`:
+- Linux: `~/.local/share/app.tinykanban/`
+- macOS: `~/Library/Application Support/app.tinykanban/`
+- Windows: `%APPDATA%\app.tinykanban\`
 
-On openSUSE you can also install the `.rpm` with `sudo rpm -i --nodeps tiny-kanban-*.rpm`. Its listed
-dependency names follow Fedora's package naming, but the actual libraries are the same.
+## Building
 
-**2b. Or build from source.** Install Rust, Node, and the
-[Tauri Linux prerequisites](https://tauri.app/start/prerequisites/#linux) for your distro, then:
+Built with [Tauri 2](https://tauri.app): a small Rust app around a single dependency-free HTML file.
 
 ```bash
 npm install
-npx tauri build --no-bundle      # binary: src-tauri/target/release/tiny-kanban
+npm run dev
 ```
 
-**Need an AppImage anyway?** You can still build one yourself:
-
-```bash
-npx tauri build --bundles appimage
-```
+Building, CI, releases and update signing are covered in [docs/development.md](docs/development.md).
