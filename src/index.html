@@ -83,8 +83,23 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 /* Time tracking clock: ticks once a second while the card is in a tracking column */
 .ck{position:absolute;top:50%;transform:translateY(-50%);right:1.5em;width:.95em;height:.95em;color:var(--mute);display:none}
 .card.timed{padding-right:2.6em} /* .card.x: must beat the .card padding rule further down */
-.timed .ck{display:block}
-.run .ck{color:var(--acc)}
+.timed .ck,.tmr .ck{display:block}
+.run .ck,.tmr .ck{color:var(--acc)}
+.card.tmr{padding-right:2.6em}
+.ck{cursor:pointer;border-radius:50%}
+.ck:hover{color:var(--fg)}
+.tmr .ck .face{fill:currentColor;fill-opacity:.25} /* a timer is set */
+/* Timer done: the card pulses for a few seconds */
+.ding{animation:ding 1s ease-in-out 5}
+@keyframes ding{50%{box-shadow:0 0 0 2.5px var(--acc)}}
+#tm{position:fixed;z-index:11;padding:8px 10px;background:var(--card);border-radius:7px;box-shadow:0 6px 20px #0005;font:12px/1.35 var(--sys);color:var(--fg);display:flex;align-items:center;gap:6px;white-space:nowrap}
+#tm[hidden],#tm [hidden]{display:none}
+#tm .set,#tm .run{display:flex;align-items:center;gap:6px}
+#tm input{width:52px;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
+#tm input:focus{border-color:var(--acc)}
+#tm button{border:0;border-radius:4px;height:24px;padding:0 9px;font:inherit;cursor:pointer;background:var(--acc);color:#fff}
+#tm #tmX{background:#8883;color:var(--fg)}
+#tm .lbl{color:var(--mute)}
 .ck svg{width:100%;height:100%;display:block;overflow:visible}
 .ck .hd{transform-box:view-box;transform-origin:50% 50%}
 
@@ -143,7 +158,11 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="cg" title="Settings"><svg viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M6.9 1h2.2l.4 1.9 1.2.5 1.6-1.1 1.6 1.6-1.1 1.6.5 1.2 1.9.4v2.2l-1.9.4-.5 1.2 1.1 1.6-1.6 1.6-1.6-1.1-1.2.5-.4 1.9H6.9l-.4-1.9-1.2-.5-1.6 1.1-1.6-1.6 1.1-1.6-.5-1.2L1 9.1V6.9l1.9-.4.5-1.2-1.1-1.6 1.6-1.6 1.6 1.1 1.2-.5zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
-<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
+<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
+<div id="tm" hidden>
+<div class="set"><span class="lbl">Timer</span><input id="tmIn" type="number" min="1" max="1440" step="1" value="25" aria-label="Minutes"><span class="lbl">min</span><button id="tmGo">Start</button></div>
+<div class="run"><span id="tmLeft"></span><button id="tmX">Cancel</button></div>
+</div>
 <div id="st" hidden><div class="sb" hidden></div>
 <h3>Opacity</h3>
 <div class="op"><input id="opIn" type="range" min="30" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
@@ -202,6 +221,7 @@ function save() {
       const o = { t: c.firstChild.textContent };
       if (+c.dataset.ms) o.ms = +c.dataset.ms;
       if (+c.dataset.since) o.since = +c.dataset.since;
+      if (+c.dataset.due) { o.id = c.dataset.id; o.due = +c.dataset.due; o.mins = +c.dataset.mins }
       return o;
     })
   }));
@@ -210,6 +230,7 @@ function save() {
   return persist(JSON.stringify({ at: beat, mini: bc.contains('mini'), locked: bc.contains('locked'), ontop: bc.contains('ontop'), opacity, theme, accent, keys, cols, archive }));
 }
 function sync() {
+  setTimeout(pushTimers);
   lists = [...B.querySelectorAll('.list')];
   counts = [...B.querySelectorAll('.col h2 span+span')];
   track();
@@ -223,10 +244,11 @@ function sync() {
 function card(v) {
   const o = typeof v === 'string' ? { t: v } : v, c = document.createElement('div');
   c.className = 'card';
-  c.innerHTML = '<span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
+  c.innerHTML = '<span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
   c.firstChild.textContent = o.t;
   if (o.ms) c.dataset.ms = o.ms;
   if (o.since) c.dataset.since = o.since;
+  if (o.due && o.id) { c.dataset.id = o.id; c.dataset.due = o.due; c.dataset.mins = o.mins || 0 }
   return c;
 }
 
@@ -243,6 +265,7 @@ function track() {
       if (!on) c.querySelector('.ck .hd').style.transform = ''; // stopped: hand back to 12 o'clock
       c.classList.toggle('run', on);
       c.classList.toggle('timed', on || +c.dataset.ms > 0);
+      c.classList.toggle('tmr', !!+c.dataset.due);
     }
   }
 }
@@ -279,11 +302,16 @@ function fmt(ms) {
   return d ? `${d}d ${h % 24}h` : h ? `${h}h ${m % 60}m` : m ? `${m}m` : `${Math.floor(ms / 1000)}s`;
 }
 // Hovering a clock shows the time spent; works on the mini-mode pop-out too.
-addEventListener('pointerover', e => {
+addEventListener('pointermove', e => { // move, not over: stays current after a click on the clock
   const ck = e.target.closest('.ck');
   if (!ck) return;
   const c = ck.closest('.card'), src = c === Z ? zc : c;
-  if (src) ck.title = `Time tracked: ${fmt(elapsed(src))}` + (src.classList.contains('run') ? ' (running)' : '');
+  if (!src) return;
+  const lines = [];
+  if (+src.dataset.due) lines.push(`Timer: ${left(src.dataset.due - Date.now())} left`);
+  if (src.classList.contains('timed')) lines.push(`Time tracked: ${fmt(elapsed(src))}` + (src.classList.contains('run') ? ' (running)' : ''));
+  lines.push(+src.dataset.due ? 'Click to see or cancel the timer' : 'Click to set a timer');
+  ck.title = lines.join('\n');
 });
 
 function addColumn(o, before = null) {
@@ -318,6 +346,8 @@ function build(data) {
 
 // Delete
 B.addEventListener('click', e => {
+  const ck = e.target.closest('.ck');
+  if (ck) return openTimer(ck.closest('.card'), ck);
   if (e.target.classList.contains('x')) archiveCard(e.target.parentNode);
 });
 
@@ -349,7 +379,7 @@ function edit(t) {
 let d = null;
 B.addEventListener('pointerdown', e => {
   const c = e.target.closest('.card');
-  if (!c || e.button !== 0 || e.target.closest('.x') || c.querySelector('[contenteditable=true],[contenteditable=plaintext-only]')) return;
+  if (!c || e.button !== 0 || e.target.closest('.x,.ck') || c.querySelector('[contenteditable=true],[contenteditable=plaintext-only]')) return;
   d = { c, sx: e.clientX, sy: e.clientY, on: false };
 });
 
@@ -431,6 +461,7 @@ Z.addEventListener('pointerleave', hideZoom);
 Z.addEventListener('pointerdown', e => {
   if (e.button !== 0 || !zc) return;
   if (e.target.closest('.x')) { const c = zc; hideZoom(); archiveCard(c); return; }
+  if (e.target.closest('.ck')) { const c = zc, r = e.target.closest('.ck').getBoundingClientRect(); hideZoom(); openTimer(c, r); return; }
   d = { c: zc, sx: e.clientX, sy: e.clientY, on: false, from: Z.getBoundingClientRect() };
 });
 addEventListener('pointermove', () => { if (d && d.on && !Z.hidden) hideZoom() });
@@ -516,7 +547,7 @@ const lk = document.getElementById('lk');
 function setLocked(on) {
   document.body.classList.toggle('locked', on);
   lk.title = on ? 'Unlock' : 'Lock';
-  if (on) { end(); hideSettings(); hideZoom(); if (document.activeElement !== lk) document.activeElement.blur(); }
+  if (on) { end(); hideSettings(); hideZoom(); hideTimer(); if (document.activeElement !== lk) document.activeElement.blur(); }
   syncPassthrough();
 }
 async function syncPassthrough() {
@@ -692,6 +723,83 @@ addEventListener('keydown', e => {
   }
   recording = null; paintKeys(); applyKeys(); sync();
 }, true);
+// Timers: click a card's clock to set one in minutes. The waiting happens in
+// Rust (src-tauri/src/timers.rs), which shows an OS notification when it's due;
+// if that can't be delivered, the page pings and shows itself at full opacity.
+const TM = document.getElementById('tm'), tmIn = document.getElementById('tmIn'), tmLeft = document.getElementById('tmLeft');
+let tmCard = null, lastMins = 25, timerSig = '', webTimer, flashT, audio;
+function left(ms) { const m = Math.ceil(ms / 60000); return m <= 1 ? (ms < 60000 ? 'under a minute' : '1 min') : m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m` }
+function openTimer(card, anchor) {
+  if (!card) return;
+  tmCard = card;
+  const due = +card.dataset.due;
+  TM.querySelector('.set').hidden = !!due; TM.querySelector('.run').hidden = !due;
+  if (due) tmLeft.textContent = `Ends ${new Date(due).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${left(due - Date.now())} left`;
+  else tmIn.value = lastMins;
+  TM.hidden = false;
+  const r = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : anchor, w = TM.offsetWidth, h = TM.offsetHeight;
+  TM.style.left = Math.max(4, Math.min(r.right - w, innerWidth - w - 4)) + 'px';
+  TM.style.top = (r.bottom + h + 8 < innerHeight ? r.bottom + 4 : Math.max(4, r.top - h - 4)) + 'px';
+  if (!due) { tmIn.focus(); tmIn.select(); }
+}
+function hideTimer() { TM.hidden = true; tmCard = null }
+function startTimer() {
+  const m = Math.round(+tmIn.value);
+  if (!tmCard || !(m >= 1 && m <= 1440)) return tmIn.focus();
+  lastMins = m;
+  tmCard.dataset.id = tmCard.dataset.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  tmCard.dataset.due = Date.now() + m * 60e3; tmCard.dataset.mins = m;
+  hideTimer(); sync();
+}
+document.getElementById('tmGo').onclick = startTimer;
+tmIn.addEventListener('keydown', e => { if (e.key === 'Enter') startTimer() });
+document.getElementById('tmX').onclick = () => { if (tmCard) { delete tmCard.dataset.due; delete tmCard.dataset.mins } hideTimer(); sync(); };
+addEventListener('pointerdown', e => { if (!TM.hidden && !TM.contains(e.target) && !e.target.closest('.ck')) hideTimer() }, true);
+addEventListener('keydown', e => { if (e.key === 'Escape' && !TM.hidden) hideTimer() });
+// Send the running timers to Rust whenever they change.
+function pushTimers() {
+  const list = [...B.querySelectorAll('.card[data-due]')].map(c => [c.dataset.id, +c.dataset.due, c.firstChild.textContent]);
+  const sig = JSON.stringify(list);
+  if (sig === timerSig) return;
+  timerSig = sig;
+  if (invoke) return invoke('set_timers', { list });
+  clearTimeout(webTimer); // plain browser (tests): a page timer instead
+  const next = list.sort((a, b) => a[1] - b[1])[0];
+  if (next) webTimer = setTimeout(() => onTimer(next[0], false), Math.max(0, next[1] - Date.now()));
+}
+function onTimer(id, notified) {
+  const c = [...B.querySelectorAll('.card[data-due]')].find(c => c.dataset.id === id);
+  if (!c) return;
+  delete c.dataset.due; delete c.dataset.mins;
+  c.classList.remove('ding'); c.offsetWidth; c.classList.add('ding');
+  setTimeout(() => c.classList.remove('ding'), 5200);
+  c.scrollIntoView({ block: 'nearest' });
+  if (!notified) { ping(); flash(); }
+  sync();
+}
+// Fallback signal: a soft two-note ping, and full opacity for a few seconds.
+// The audio context is created on the first click, as web engines only allow
+// sound after the user has interacted with the page.
+addEventListener('pointerdown', () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)() } catch (_) {} }, { once: true, capture: true });
+function ping() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume();
+    [[880, 0], [1320, 0.16]].forEach(([f, d]) => {
+      const t = audio.currentTime + d, o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1);
+    });
+  } catch (_) {}
+}
+function flash() {
+  document.body.style.opacity = '';
+  clearTimeout(flashT);
+  flashT = setTimeout(() => setOpacity(opacity), 6000);
+}
+if (window.__TAURI__) window.__TAURI__.event.listen('timer', e => onTimer(e.payload[0], e.payload[1]));
+
 if (window.__TAURI__) window.__TAURI__.event.listen('shortcut', () => { setLocked(!document.body.classList.contains('locked')); sync() });
 else document.documentElement.classList.add('web');
 

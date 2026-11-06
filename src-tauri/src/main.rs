@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod efficiency;
+mod timers;
 
 use std::{
     fs,
@@ -279,6 +280,7 @@ fn main() {
         )
         .manage(Pending(Mutex::new(None)))
         .manage(Passthrough::default())
+        .manage(timers::Timers::default())
         .setup(|_app| {
             // macOS and Windows webviews spell-check out of the box; WebKitGTK
             // needs it switched on and told which language to use.
@@ -318,7 +320,8 @@ fn main() {
             set_on_top,
             passthrough,
             autostart,
-            set_shortcuts
+            set_shortcuts,
+            timers::set_timers
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tiny-kanban");
