@@ -82,8 +82,7 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 .run .ck{color:var(--acc)}
 .ck svg{width:100%;height:100%;display:block;overflow:visible}
 .ck .hd{transform-box:view-box;transform-origin:50% 50%}
-.run .ck .hd{animation:tick 8s steps(8) infinite}
-@keyframes tick{to{transform:rotate(360deg)}}
+
 #mm::after{content:"";display:block;margin:auto;width:8px;height:8px;border-radius:50%;background:currentColor;transition:width .15s,height .15s}
 .mini #mm::after{width:4px;height:4px}
 #g{position:fixed;z-index:8;pointer-events:none;color:var(--mute);white-space:pre}
@@ -255,6 +254,16 @@ setInterval(() => {
   if (now - beat > 150e3) pause(beat + 60e3, now); // asleep: count up to the expected beat only
   if (B.querySelector('.card.run')) { clearTimeout(timer); save(); }
 }, 60e3);
+// Clock hands step once a second from a timer: the page changes only then, and
+// not at all when no clock runs or the window is hidden.
+let tickN = 0;
+setInterval(() => {
+  if (document.hidden) return;
+  const hands = B.querySelectorAll('.run .ck .hd');
+  if (!hands.length) return;
+  tickN = (tickN + 1) % 8;
+  for (const h of hands) h.style.transform = `rotate(${tickN * 45}deg)`;
+}, 1000);
 function elapsed(c) { return (+c.dataset.ms || 0) + (+c.dataset.since ? Date.now() - c.dataset.since : 0) }
 function fmt(ms) {
   const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);

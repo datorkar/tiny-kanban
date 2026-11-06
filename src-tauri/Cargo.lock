@@ -3875,6 +3875,7 @@ dependencies = [
 name = "tiny-kanban"
 version = "0.2.7"
 dependencies = [
+ "libc",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -3883,6 +3884,8 @@ dependencies = [
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
  "webkit2gtk",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]
