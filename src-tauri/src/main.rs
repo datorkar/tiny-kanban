@@ -5,10 +5,13 @@ mod efficiency;
 use std::{
     fs,
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
     time::Duration,
 };
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_window_state::StateFlags;
@@ -95,41 +98,91 @@ fn set_on_top(window: WebviewWindow, on: bool) -> Result<(), String> {
     window.set_always_on_top(on).map_err(|e| e.to_string())
 }
 
-/// Lock state: a generation counter (each call starts a fresh watcher and
-/// retires the old one) and the area that must stay clickable.
+/// Lock state shared with the watcher thread.
 #[derive(Default)]
-struct Passthrough(Arc<Mutex<(u64, Option<[f64; 4]>)>>);
+struct Passthrough {
+    /// Generation counter (each call starts a fresh watcher and retires the
+    /// old one) and the area that must stay clickable.
+    lock: Arc<Mutex<(u64, Option<[f64; 4]>)>>,
+    /// Window moved, resized or changed screens: re-read position and scale.
+    stale: Arc<AtomicBool>,
+    /// Window minimised: stop checking until it's back.
+    hidden: Arc<AtomicBool>,
+    /// The current watcher, to wake it early (unlock, restore, move).
+    thread: Mutex<Option<std::thread::Thread>>,
+}
+
+impl Passthrough {
+    fn wake(&self) {
+        if let Some(t) = &*self.thread.lock().unwrap() {
+            t.unpark();
+        }
+    }
+}
+
+/// Keeps the watcher's cached geometry current; called from window events.
+fn passthrough_event(app: &AppHandle, event: &tauri::WindowEvent) {
+    use tauri::WindowEvent::*;
+    if !matches!(event, Moved(_) | Resized(_) | ScaleFactorChanged { .. }) {
+        return;
+    }
+    let pt = app.state::<Passthrough>();
+    pt.stale.store(true, Ordering::Relaxed);
+    if let (Resized(_), Some(w)) = (event, app.get_webview_window("main")) {
+        pt.hidden.store(w.is_minimized().unwrap_or(false), Ordering::Relaxed);
+    }
+    pt.wake();
+}
 
 /// Click-through while locked. `keep` is the lock button's rect in CSS pixels
 /// (x, y, w, h); clicks everywhere else go to the windows behind. The OS can
 /// only make the whole window click-through, so a watcher thread follows the
 /// cursor and makes the window clickable again while it's over the button.
+/// To stay cheap it asks only for the cursor position (window position, size
+/// and scale are cached and refreshed on window events), checks 4x a second
+/// while the cursor is away from the window and ~30x a second over it, and
+/// sleeps while the window is minimised.
 /// Returns false where the cursor can't be tracked outside the window
 /// (Wayland), and the caller then keeps a plain, non-click-through lock.
 #[tauri::command]
 fn passthrough(window: WebviewWindow, state: State<'_, Passthrough>, keep: Option<[f64; 4]>) -> bool {
     let gen = {
-        let mut s = state.0.lock().unwrap();
+        let mut s = state.lock.lock().unwrap();
         s.0 += 1;
         s.1 = keep;
         s.0
     };
+    state.wake(); // let a previous watcher notice it's retired
     let wayland = cfg!(target_os = "linux") && std::env::var_os("WAYLAND_DISPLAY").is_some();
     if keep.is_none() || wayland || window.cursor_position().is_err() {
-        state.0.lock().unwrap().1 = None;
+        state.lock.lock().unwrap().1 = None;
         let _ = window.set_ignore_cursor_events(false);
         return keep.is_none();
     }
-    let shared = state.0.clone();
-    std::thread::spawn(move || {
+    let (shared, stale, hidden) = (state.lock.clone(), state.stale.clone(), state.hidden.clone());
+    stale.store(true, Ordering::Relaxed);
+    let handle = std::thread::spawn(move || {
         let mut ignoring = None;
+        let (mut origin, mut size, mut sf) = (PhysicalPosition::new(0, 0), PhysicalSize::new(0, 0), 1.0);
         loop {
             let rect = match *shared.lock().unwrap() {
                 (g, Some(r)) if g == gen => r,
                 _ => break,
             };
-            if let (Ok(c), Ok(p), Ok(sf)) = (window.cursor_position(), window.inner_position(), window.scale_factor()) {
-                let (x, y) = ((c.x - p.x as f64) / sf, (c.y - p.y as f64) / sf);
+            if hidden.load(Ordering::Relaxed) {
+                std::thread::park_timeout(Duration::from_secs(5)); // woken on restore
+                continue;
+            }
+            if stale.swap(false, Ordering::Relaxed) {
+                if let (Ok(p), Ok(s), Ok(f)) = (window.inner_position(), window.inner_size(), window.scale_factor()) {
+                    (origin, size, sf) = (p, s, f);
+                }
+            }
+            let mut near = false;
+            if let Ok(c) = window.cursor_position() {
+                let (px, py) = (c.x - origin.x as f64, c.y - origin.y as f64);
+                near = px >= 0.0 && py >= 0.0 && px < size.width as f64 && py < size.height as f64;
+                let (x, y) = (px / sf, py / sf);
                 let over = x >= rect[0] && x < rect[0] + rect[2] && y >= rect[1] && y < rect[1] + rect[3];
                 if ignoring != Some(!over) {
                     let _ = window.set_ignore_cursor_events(!over);
@@ -141,9 +194,12 @@ fn passthrough(window: WebviewWindow, state: State<'_, Passthrough>, keep: Optio
                     }
                 }
             }
-            std::thread::sleep(Duration::from_millis(30));
+            // A 26px button can't be reached from outside the window in under
+            // 250ms, so a slow check while away is just as reliable.
+            std::thread::park_timeout(Duration::from_millis(if near { 30 } else { 250 }));
         }
     });
+    *state.thread.lock().unwrap() = Some(handle.thread().clone());
     true
 }
 
@@ -247,6 +303,7 @@ fn main() {
         })
         // Save power while the window isn't focused; full speed when it is.
         .on_window_event(|window, event| {
+            passthrough_event(window.app_handle(), event);
             if let tauri::WindowEvent::Focused(focused) = event {
                 if let Some(w) = window.app_handle().get_webview_window("main") {
                     efficiency::set(&w, !*focused);
