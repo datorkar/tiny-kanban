@@ -41,12 +41,12 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 /* Settings: always regular size (outside #b, so mini mode doesn't scale it) */
 #st{position:fixed;top:24px;right:4px;z-index:10;width:244px;max-height:calc(100% - 28px);overflow-y:auto;padding:8px 10px 10px;background:var(--card);border-radius:7px;box-shadow:0 6px 20px #0005;font:12px/1.35 var(--sys);color:var(--fg);user-select:none;-webkit-user-select:none}
 #st[hidden]{display:none}
-#st h3{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:8px 0 4px}
-#st h3:first-child{margin-top:0}
+#st h3{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px}
+#st>h3:first-of-type{margin-top:0} /* only the panel's very first heading */
 #st .op{display:flex;align-items:center;gap:8px}
 #st input[type=range]{flex:1;margin:0;accent-color:var(--acc)}
 #st .op b{width:32px;text-align:right;font-weight:600;font-size:11px}
-#st .cr{display:flex;align-items:center;gap:2px;margin-bottom:3px}
+#st .cr{display:flex;align-items:center;gap:2px;margin-bottom:4px}
 #st .cr input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
 #st .cr input:focus{border-color:var(--acc)}
 #st button{border:0;background:none;color:var(--mute);font:inherit;border-radius:4px;cursor:pointer;height:24px}
@@ -56,21 +56,23 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 #st .tr svg{width:13px;height:13px;display:block;margin:auto}
 #st .tr.on{color:var(--acc)}
 #st .add-col{padding:0 6px;margin-top:2px}
-#st .note{font-size:10.5px;color:var(--mute);margin-top:4px}
+#arAll{margin-top:6px}
+#st .note{font-size:10.5px;line-height:1.35;color:var(--mute);margin-top:6px}
 #st .err{color:#e5484d}
 #st .seg{display:flex;background:var(--bg);border-radius:5px;padding:2px}
 #st .seg button{flex:1;height:22px}
-#st .acc{display:flex;gap:8px}
+#st .acc{display:flex;gap:10px;padding:4px}
 #st .acc button{width:22px;height:22px;padding:0;border-radius:50%;background:var(--c)!important;box-shadow:0 0 0 2px var(--card),0 0 0 3px transparent}
 #st .acc button.on{box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--c)}
 #st .seg button.on{background:var(--card);color:var(--fg);box-shadow:var(--sh)}
 #st .hd{width:14px;flex:none;color:var(--mute);cursor:grab;text-align:center;font-size:11px;touch-action:none}
 #st .cr.mv{opacity:.6}
-#st .kr{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+#st .kr{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
 #st .key{min-width:96px;padding:0 8px;background:var(--bg);border:1px solid #8884!important;font-size:11px}
 #st .key.rec{border-color:var(--acc)!important;color:var(--acc)}
 #st .chk{display:flex;align-items:center;gap:6px;cursor:pointer}
 #st .chk input{margin:0;accent-color:var(--acc)}
+.arw{position:relative}
 #arl{max-height:150px;overflow-y:auto}
 #st .ar{display:flex;align-items:center;gap:2px;padding:2px 0;border-bottom:1px solid #8882}
 #st .ar .at{flex:1;min-width:0}
@@ -99,10 +101,11 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 .col h2{white-space:nowrap;gap:.4em;font-size:.8em;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);padding:.7em .8em .3em;display:flex;justify-content:space-between;user-select:none;-webkit-user-select:none}
 /* Native scrollbars take width from the cards, so they're hidden and a 3px
    overlay thumb (.sb) is drawn on top of the cards' right edge instead. */
-.list{scrollbar-width:none}
-.list::-webkit-scrollbar{display:none}
+.list,#st,#arl{scrollbar-width:none}
+.list::-webkit-scrollbar,#st::-webkit-scrollbar,#arl::-webkit-scrollbar{display:none}
 .sb{position:absolute;right:0;top:0;width:7px;padding:0 1px 0 3px;background:#8889;background-clip:content-box;border-radius:3px;opacity:0;transition:opacity .2s;cursor:default}
-.col:hover .sb,.sb.on{opacity:1}
+.col:hover .sb,#st:hover>.sb,.arw:hover>.sb,.sb.on{opacity:1}
+#st>.sb{right:1px}
 .sb[hidden]{display:none}
 .list{flex:1;min-height:0;overflow-y:auto;padding:.24em .4em;display:flex;flex-direction:column;gap:.32em}
 .card{position:relative;background:var(--card);border-radius:.4em;padding:.4em 1.6em .4em .56em;box-shadow:var(--sh);transition:font-size .15s ease-out;cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
@@ -141,7 +144,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div id="b"></div>
 <span id="g" hidden></span>
 <div id="z" class="card" hidden><span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
-<div id="st" hidden>
+<div id="st" hidden><div class="sb" hidden></div>
 <h3>Opacity</h3>
 <div class="op"><input id="opIn" type="range" min="30" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
 <h3>Columns</h3>
@@ -162,7 +165,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <label class="chk"><input type="checkbox" id="auto"> Launch at login</label>
 </div>
 <h3>Archive <span id="arN"></span></h3>
-<div id="arl"></div>
+<div class="arw"><div id="arl"></div><div class="sb" hidden></div></div>
 <div class="note" id="arNone">× on a card archives it here.</div>
 <button class="add-col" id="arAll" hidden>Delete all permanently</button>
 </div>
@@ -524,22 +527,26 @@ async function syncPassthrough() {
 addEventListener('resize', () => { if (document.body.classList.contains('locked')) syncPassthrough() });
 
 // Overlay scrollbar thumbs: 3px, drawn over the cards so they don't narrow them.
+// Columns and the archive list have the thumb next to the scroller; the
+// settings panel has it inside, where it scrolls along and needs scrollTop added.
+function thumbOf(l) { return l === st ? st.firstElementChild : l.nextElementSibling }
+function scrollerOf(sb) { return sb.parentNode === st ? st : sb.previousElementSibling }
 function thumb(l) {
-  const sb = l.nextSibling, { scrollTop: t, scrollHeight: sh, clientHeight: ch } = l;
+  const sb = thumbOf(l), { scrollTop: t, scrollHeight: sh, clientHeight: ch } = l;
   if (sh <= ch + 1) { sb.hidden = true; return; }
-  const h = Math.max(16, ch * ch / sh);
+  const h = Math.max(16, ch * ch / sh), base = l === st ? t : l.offsetTop;
   sb.hidden = false;
   sb.style.height = h + 'px';
-  sb.style.transform = `translateY(${l.offsetTop + t / (sh - ch) * (ch - h)}px)`;
+  sb.style.transform = `translateY(${base + t / (sh - ch) * (ch - h)}px)`;
 }
 addEventListener('resize', () => lists.forEach(thumb));
 B.addEventListener('transitionend', () => lists.forEach(thumb)); // mini-mode size change
 B.addEventListener('input', e => { const l = e.target.closest('.list'); if (l) thumb(l) }); // editing grows a card
-B.addEventListener('pointerdown', e => {
+addEventListener('pointerdown', e => {
   const sb = e.target.closest('.sb');
   if (!sb || e.button !== 0) return;
   e.preventDefault();
-  const l = sb.previousSibling, y0 = e.clientY, t0 = l.scrollTop;
+  const l = scrollerOf(sb), y0 = e.clientY, t0 = l.scrollTop;
   const k = (l.scrollHeight - l.clientHeight) / (l.clientHeight - sb.offsetHeight);
   sb.classList.add('on'); sb.setPointerCapture(e.pointerId);
   const move = ev => { l.scrollTop = t0 + (ev.clientY - y0) * k };
@@ -576,7 +583,7 @@ function hideSettings() {
 }
 cg.onclick = () => {
   if (!st.hidden) return hideSettings();
-  renderSettings(); st.hidden = false; document.body.classList.add('st');
+  renderSettings(); st.hidden = false; document.body.classList.add('st'); thumb(st); thumb(arl); // sizes need the panel shown
 };
 function renderSettings() {
   stc.replaceChildren();
@@ -703,6 +710,9 @@ function archiveCard(c) {
   if (!st.hidden) renderArchive();
 }
 const arl = document.getElementById('arl'), arAll = document.getElementById('arAll');
+arl.addEventListener('scroll', () => thumb(arl));
+st.addEventListener('scroll', () => thumb(st));
+addEventListener('resize', () => { if (!st.hidden) thumb(st) });
 function renderArchive() {
   arl.replaceChildren();
   document.getElementById('arN').textContent = archive.length ? `(${archive.length})` : '';
@@ -722,6 +732,7 @@ function renderArchive() {
     r.children[2].onclick = () => { archive.splice(i, 1); sync(); renderArchive(); };
     arl.append(r);
   });
+  thumb(arl); if (!st.hidden) thumb(st);
 }
 arAll.onclick = () => {
   if (!arAll.dataset.sure) { arAll.dataset.sure = '1'; arAll.textContent = `Click again to delete ${archive.length} card${archive.length > 1 ? 's' : ''}`; return; }
