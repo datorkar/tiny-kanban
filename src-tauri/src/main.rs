@@ -6,7 +6,10 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, State, WebviewWindow};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+use tauri_plugin_window_state::StateFlags;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 fn board_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -142,11 +145,80 @@ fn passthrough(window: WebviewWindow, state: State<'_, Passthrough>, keep: Optio
     true
 }
 
+// ---- Launch on login --------------------------------------------------------
+
+/// Reads (and with `on`, first changes) whether the app starts at login.
+#[tauri::command]
+fn autostart(app: AppHandle, on: Option<bool>) -> Result<bool, String> {
+    let m = app.autolaunch();
+    if let Some(on) = on {
+        if on { m.enable() } else { m.disable() }.map_err(|e| e.to_string())?;
+    }
+    m.is_enabled().map_err(|e| e.to_string())
+}
+
+// ---- Global shortcuts ---------------------------------------------------------
+
+/// (Re)registers the system-wide shortcuts, e.g. "CmdOrCtrl+Alt+KeyL"; an empty
+/// string turns that one off. Errors name the shortcuts that couldn't be taken
+/// (usually because another app already uses them).
+#[tauri::command]
+fn set_shortcuts(app: AppHandle, lock: String, mv: String) -> Result<(), String> {
+    let gs = app.global_shortcut();
+    let _ = gs.unregister_all();
+    let mut errs = Vec::new();
+    for (keys, what) in [(lock, "lock"), (mv, "move")] {
+        if keys.is_empty() {
+            continue;
+        }
+        let r = gs.on_shortcut(keys.as_str(), move |app, _, ev| {
+            if ev.state != ShortcutState::Pressed {
+                return;
+            }
+            let Some(w) = app.get_webview_window("main") else { return };
+            if what == "move" {
+                move_to_cursor(&w);
+            } else {
+                let _ = w.emit("shortcut", what); // the page owns the lock state
+            }
+        });
+        if let Err(e) = r {
+            errs.push(format!("{what}: {e}"));
+        }
+    }
+    if errs.is_empty() { Ok(()) } else { Err(errs.join("; ")) }
+}
+
+/// Puts the window's top strip under the mouse, kept on the mouse's screen.
+fn move_to_cursor(w: &WebviewWindow) {
+    // inner == outer for this borderless window, and outer_size can read 0 on Linux
+    let (Ok(c), Ok(size)) = (w.cursor_position(), w.inner_size()) else { return };
+    let sf = w.scale_factor().unwrap_or(1.0);
+    let (ww, wh) = (size.width as f64, size.height as f64);
+    let (mut x, mut y) = (c.x - ww / 2.0, c.y - 11.0 * sf);
+    let monitor = w.monitor_from_point(c.x, c.y).ok().flatten().or_else(|| w.current_monitor().ok().flatten());
+    if let Some(m) = monitor {
+        let (p, s) = (m.position(), m.size());
+        x = x.min(p.x as f64 + s.width as f64 - ww).max(p.x as f64);
+        y = y.min(p.y as f64 + s.height as f64 - wh).max(p.y as f64);
+    }
+    let _ = w.unminimize();
+    let _ = w.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+}
+
 // ---- App -----------------------------------------------------------------
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Remembers window position and size, saved on close and on exit.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
+                .build(),
+        )
         .manage(Pending(Mutex::new(None)))
         .manage(Passthrough::default())
         .setup(|_app| {
@@ -175,7 +247,9 @@ fn main() {
             check_update,
             install_update,
             set_on_top,
-            passthrough
+            passthrough,
+            autostart,
+            set_shortcuts
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tiny-kanban");
