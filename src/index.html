@@ -82,10 +82,12 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 .web .os-only{display:none}
 /* Time tracking clock: ticks once a second while the card is in a tracking column */
 .ck{position:absolute;top:50%;transform:translateY(-50%);right:1.5em;width:.95em;height:.95em;color:var(--mute);display:none}
-.card.timed{padding-right:2.6em} /* .card.x: must beat the .card padding rule further down */
 .timed .ck,.tmr .ck{display:block}
+/* No clock yet: a faint one on hover, to set a timer */
+body:not(.dragging) .card:hover .ck{display:block}
+.card:not(.timed):not(.tmr) .ck{opacity:.5}
+.card:not(.timed):not(.tmr) .ck:hover{opacity:1}
 .run .ck,.tmr .ck{color:var(--acc)}
-.card.tmr{padding-right:2.6em}
 .ck{cursor:pointer;border-radius:50%}
 .ck:hover{color:var(--fg)}
 .tmr .ck .face{fill:currentColor;fill-opacity:.25} /* a timer is set */
@@ -123,7 +125,7 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 #st>.sb{right:1px}
 .sb[hidden]{display:none}
 .list{flex:1;min-height:0;overflow-y:auto;padding:.24em .4em;display:flex;flex-direction:column;gap:.32em}
-.card{position:relative;background:var(--card);border-radius:.4em;padding:.4em 1.6em .4em .56em;box-shadow:var(--sh);transition:font-size .15s ease-out;cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
+.card{position:relative;background:var(--card);border-radius:.4em;padding:.4em 2.6em .4em .56em;box-shadow:var(--sh);transition:font-size .15s ease-out;cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
 .card .t{outline:none;display:block;min-height:1.35em}
 .card .t[contenteditable=plaintext-only],.card .t[contenteditable=true]{cursor:text;user-select:text;-webkit-user-select:text}
 .card:has([contenteditable=plaintext-only]),.card:has([contenteditable=true]){box-shadow:0 0 0 1.5px var(--acc)}
