@@ -19,7 +19,7 @@
         "shadow": true,
         "dragDropEnabled": false,
         "transparent": true,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --autoplay-policy=no-user-gesture-required"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --autoplay-policy=no-user-gesture-required --js-flags=--lite-mode --in-process-gpu"
       }
     ],
     "security": {
