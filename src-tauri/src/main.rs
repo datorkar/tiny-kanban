@@ -282,6 +282,9 @@ fn main() {
         .manage(Passthrough::default())
         .manage(timers::Timers::default())
         .setup(|_app| {
+            if let Some(win) = _app.get_webview_window("main") {
+                efficiency::trim_after_start(win);
+            }
             // macOS and Windows webviews spell-check out of the box; WebKitGTK
             // needs it switched on and told which language to use.
             #[cfg(target_os = "linux")]

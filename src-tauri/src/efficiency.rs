@@ -24,10 +24,6 @@ pub fn set(window: &WebviewWindow, low: bool) {
 
 #[cfg(windows)]
 fn apply(window: &WebviewWindow, low: bool) {
-    use webview2_com::Microsoft::Web::WebView2::Win32::{
-        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
-    };
-    use windows::core::Interface;
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
@@ -88,6 +84,16 @@ fn apply(window: &WebviewWindow, low: bool) {
         }
     }
 
+    memory_target(window, low);
+}
+
+/// WebView2's memory target: low makes it trim caches and give memory back.
+#[cfg(windows)]
+fn memory_target(window: &WebviewWindow, low: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+    };
+    use windows::core::Interface;
     let _ = window.with_webview(move |wv| unsafe {
         if let Ok(core) = wv.controller().CoreWebView2() {
             if let Ok(wv19) = core.cast::<ICoreWebView2_19>() {
@@ -99,6 +105,27 @@ fn apply(window: &WebviewWindow, low: bool) {
             }
         }
     });
+}
+
+/// Chromium allocates a lot while starting up (~80 MB on Windows) and keeps it
+/// until asked to trim, which otherwise only happens on the first unfocus. So a
+/// few seconds after start, trim once, then go back to the normal target
+/// (unless the window has gone to the background meanwhile).
+pub fn trim_after_start(window: WebviewWindow) {
+    #[cfg(windows)]
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(4));
+        if STATE.load(Ordering::Relaxed) == 2 {
+            return; // already in the background, so already trimmed
+        }
+        memory_target(&window, true);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        if STATE.load(Ordering::Relaxed) != 2 {
+            memory_target(&window, false);
+        }
+    });
+    #[cfg(not(windows))]
+    let _ = window;
 }
 
 #[cfg(target_os = "macos")]
