@@ -778,12 +778,17 @@ function onTimer(id, notified) {
   sync();
 }
 // Fallback signal: a soft two-note ping, and full opacity for a few seconds.
-// The audio context is created on the first click, as web engines only allow
-// sound after the user has interacted with the page.
-addEventListener('pointerdown', () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)() } catch (_) {} }, { once: true, capture: true });
+// The audio engine only exists around a ping, so it doesn't keep the sound
+// system busy while idle. On Windows, WebView2 is started with sound allowed
+// (see additionalBrowserArgs), so it's created on demand and closed again.
+// Elsewhere web engines need a click first: it's prepared on the first click,
+// suspended straight away, and only woken for a ping.
+const WIN = /Windows/.test(navigator.userAgent), AC = window.AudioContext || window.webkitAudioContext;
+let audioT;
+if (!WIN) addEventListener('pointerdown', () => { try { audio = audio || new AC(); audio.suspend() } catch (_) {} }, { once: true, capture: true });
 function ping() {
   try {
-    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    audio = audio || new AC();
     audio.resume();
     [[880, 0], [1320, 0.16]].forEach(([f, d]) => {
       const t = audio.currentTime + d, o = audio.createOscillator(), g = audio.createGain();
@@ -791,6 +796,11 @@ function ping() {
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
       o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1);
     });
+    clearTimeout(audioT);
+    audioT = setTimeout(() => {
+      if (!audio) return;
+      if (WIN) { audio.close(); audio = null } else audio.suspend();
+    }, 1500);
   } catch (_) {}
 }
 function flash() {
