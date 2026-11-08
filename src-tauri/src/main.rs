@@ -280,7 +280,8 @@ fn set_shortcuts(app: AppHandle, lock: String, mv: String) -> Result<(), String>
     if errs.is_empty() { Ok(()) } else { Err(errs.join("; ")) }
 }
 
-/// Puts the window's top strip under the mouse, kept on the mouse's screen.
+/// Puts the window's top strip under the mouse, kept on the mouse's screen, and
+/// gives it keyboard focus.
 fn move_to_cursor(w: &WebviewWindow) {
     // inner == outer for this borderless window, and outer_size can read 0 on Linux
     let (Ok(c), Ok(size)) = (w.cursor_position(), w.inner_size()) else { return };
@@ -295,6 +296,10 @@ fn move_to_cursor(w: &WebviewWindow) {
     }
     let _ = w.unminimize();
     let _ = w.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+    // Take keyboard focus too, so the keyboard controls work right away (even
+    // while locked). Windows allows this because it follows our own hotkey.
+    let _ = w.show();
+    let _ = w.set_focus();
 }
 
 // ---- App -----------------------------------------------------------------

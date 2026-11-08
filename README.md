@@ -39,7 +39,7 @@ browser.
 - **Overlay:** always on top, opacity 30–100%, and a lock that passes clicks through to the windows behind. The
   keyboard controls still work while locked, whenever the window has keyboard focus.
 - **Shortcuts (system-wide):** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> locks/unlocks, and
-  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse and gives it keyboard focus (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).
   Both can be changed in settings.
 - **Looks:** system/light/dark theme and four accent colours. No title bar, just a thin strip to drag.
 - **Remembers everything:** board, settings, and window position and size. It can launch at login.
