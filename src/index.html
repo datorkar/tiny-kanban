@@ -588,7 +588,8 @@ B.addEventListener('scroll', hideGhost, true);
 // Mini mode: half-size text; cards grow back to full size on hover.
 document.getElementById('mm').onclick = () => { document.body.classList.toggle('mini'); hideZoom(); sync(); };
 
-// Lock: everything except the lock button ignores mouse and keyboard.
+// Lock: the mouse only reaches the lock button (clicks pass through to the
+// windows behind); the keyboard controls keep working.
 const lk = document.getElementById('lk');
 // Locked windows also let clicks through to whatever is behind them, except on
 // the lock button itself (where the OS supports it; see passthrough in main.rs).
@@ -643,10 +644,6 @@ function setOnTop(on) {
 }
 tp.onclick = () => { setOnTop(!document.body.classList.contains('ontop')); sync(); };
 lk.onclick = () => { setLocked(!document.body.classList.contains('locked')); sync(); };
-addEventListener('keydown', e => {
-  // Locked: only Enter/Space/Tab on the focused lock button itself get through (to unlock).
-  if (document.body.classList.contains('locked') && !(e.target === lk && ['Enter', ' ', 'Tab'].includes(e.key))) { e.preventDefault(); e.stopPropagation(); }
-}, true);
 
 // Settings (cogwheel): opacity and columns. Right-click is left to the system.
 const st = document.getElementById('st'), stc = document.getElementById('stc'), cg = document.getElementById('cg');
@@ -878,10 +875,9 @@ function keyNav(e) {
 addEventListener('keydown', e => {
   const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable=true], [contenteditable=plaintext-only]');
   const mod = e.ctrlKey || e.metaKey;
-  if (document.body.classList.contains('locked')) return; // the board is read-only while locked
   if (mod && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) { if (!typing) { e.preventDefault(); undo() } return }
   if (mod && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFilter(); return }
-  if (typing || mod || e.altKey || !st.hidden || !TM.hidden || document.body.classList.contains('locked')) return;
+  if (typing || mod || e.altKey || !st.hidden || !TM.hidden) return;
   if (e.key === '/') { e.preventDefault(); openFilter(); return }
   if (keyNav(e)) e.preventDefault();
 });
