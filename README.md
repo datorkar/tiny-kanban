@@ -29,9 +29,12 @@ browser.
 ## Highlights
 
 - **Cards:** drag and drop, double-click to edit, autocomplete from words already on the board, and the OS's own spell
-  check. × archives a card; restore it or delete it for good from settings.
+  check. Web links in cards are clickable. × archives a card; restore it or delete it for good from settings.
+- **Keyboard:** arrows select a card, <kbd>Shift</kbd>+arrows move it, <kbd>Enter</kbd> edits, <kbd>Del</kbd> archives,
+  <kbd>N</kbd> adds a card, <kbd>T</kbd> opens its timer, <kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd> filters the board,
+  and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the last change (<kbd>⌘</kbd> on Mac).
 - **Columns:** rename, add, remove, drag to reorder, and choose which columns track time.
-- **Timers:** click a card's clock (or the faint one that appears on hover) to set a timer in minutes. When it's up you get an OS notification, or, where
+- **Timers:** click a card's clock (or the faint one that appears on hover) to set a timer in minutes, or reset its tracked time. When it's up you get an OS notification, or, where
   notifications aren't available, a soft ping and the window at full opacity for a few seconds.
 - **Overlay:** always on top, opacity 30–100%, and a lock that passes clicks through to the windows behind.
 - **Shortcuts (system-wide):** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> locks/unlocks, and
