@@ -204,6 +204,38 @@ fn passthrough(window: WebviewWindow, state: State<'_, Passthrough>, keep: Optio
     true
 }
 
+// ---- Links in cards -------------------------------------------------------
+
+/// Opens a web link from a card in the default browser. Only http(s), so card
+/// text can't be used to launch files or other programs.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    let ok = (url.starts_with("https://") || url.starts_with("http://")) && !url.chars().any(|c| c.is_whitespace() || c == '"');
+    if !ok {
+        return Err("not a web link".into());
+    }
+    #[cfg(windows)]
+    let mut cmd = {
+        use std::os::windows::process::CommandExt;
+        let mut c = std::process::Command::new("rundll32");
+        c.args(["url.dll,FileProtocolHandler", &url]).creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c
+    };
+    #[cfg(target_os = "macos")]
+    let mut cmd = {
+        let mut c = std::process::Command::new("open");
+        c.arg(&url);
+        c
+    };
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let mut cmd = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(&url);
+        c
+    };
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 // ---- Launch on login --------------------------------------------------------
 
 /// Reads (and with `on`, first changes) whether the app starts at login.
@@ -248,7 +280,8 @@ fn set_shortcuts(app: AppHandle, lock: String, mv: String) -> Result<(), String>
     if errs.is_empty() { Ok(()) } else { Err(errs.join("; ")) }
 }
 
-/// Puts the window's top strip under the mouse, kept on the mouse's screen.
+/// Puts the window's top strip under the mouse, kept on the mouse's screen, and
+/// gives it keyboard focus.
 fn move_to_cursor(w: &WebviewWindow) {
     // inner == outer for this borderless window, and outer_size can read 0 on Linux
     let (Ok(c), Ok(size)) = (w.cursor_position(), w.inner_size()) else { return };
@@ -263,6 +296,10 @@ fn move_to_cursor(w: &WebviewWindow) {
     }
     let _ = w.unminimize();
     let _ = w.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+    // Take keyboard focus too, so the keyboard controls work right away (even
+    // while locked). Windows allows this because it follows our own hotkey.
+    let _ = w.show();
+    let _ = w.set_focus();
 }
 
 // ---- App -----------------------------------------------------------------
@@ -324,7 +361,8 @@ fn main() {
             passthrough,
             autostart,
             set_shortcuts,
-            timers::set_timers
+            timers::set_timers,
+            open_url
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tiny-kanban");

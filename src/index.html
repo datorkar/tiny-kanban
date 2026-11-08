@@ -102,6 +102,20 @@ body:not(.dragging) .card:hover .ck{display:block}
 #tm button{border:0;border-radius:4px;height:24px;padding:0 9px;font:inherit;cursor:pointer;background:var(--acc);color:#fff}
 #tm #tmX{background:#8883;color:var(--fg)}
 #tm .lbl{color:var(--mute)}
+#tm{flex-direction:column;align-items:stretch}
+#tm .trk{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--mute)}
+#tm #tmReset{background:#8883;color:var(--fg)}
+/* Links in cards */
+.lk{color:var(--acc);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+/* Keyboard selection and filter */
+.card.sel{box-shadow:0 0 0 1.5px var(--acc)}
+.card.dim{opacity:.25}
+#fl{position:fixed;top:24px;left:6px;z-index:10;display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--card);border-radius:7px;box-shadow:0 6px 20px #0005;font:12px/1.35 var(--sys)}
+#fl[hidden]{display:none}
+#fl input{width:150px;border:0;outline:none;background:none;color:var(--fg);font:inherit}
+#fl span{color:var(--mute);font-size:11px}
+#st .kb{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;font-size:11px;color:var(--mute)}
+#st kbd{font:600 10px/1 var(--sys);color:var(--fg);background:var(--bg);border:1px solid #8884;border-radius:3px;padding:2px 4px;white-space:nowrap}
 .ck svg{width:100%;height:100%;display:block;overflow:visible}
 .ck .hd{transform-box:view-box;transform-origin:50% 50%}
 
@@ -164,7 +178,9 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div id="tm" hidden>
 <div class="set"><span class="lbl">Timer</span><input id="tmIn" type="number" min="1" max="1440" step="1" value="25" aria-label="Minutes"><span class="lbl">min</span><button id="tmGo">Start</button></div>
 <div class="run"><span id="tmLeft"></span><button id="tmX">Cancel</button></div>
+<div class="trk" hidden><span id="tmTrk"></span><button id="tmReset" title="Set the tracked time back to zero">Reset</button></div>
 </div>
+<div id="fl" hidden><input id="flIn" placeholder="Filter cards…" spellcheck="false" aria-label="Filter cards"><span id="flN"></span></div>
 <div id="st" hidden><div class="sb" hidden></div>
 <h3>Opacity</h3>
 <div class="op"><input id="opIn" type="range" min="30" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
@@ -176,6 +192,15 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div class="acc" id="acc"></div>
 <h3>Theme</h3>
 <div class="seg" id="th"><button data-v="">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div>
+<h3>Keyboard</h3>
+<div class="kb">
+<span><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></span><span>select a card</span>
+<span><kbd>Shift</kbd> + arrows</span><span>move it</span>
+<span><kbd>Enter</kbd> · <kbd>Del</kbd></span><span>edit · archive</span>
+<span><kbd>N</kbd> · <kbd>T</kbd></span><span>new card · timer</span>
+<span><kbd class="mod">Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd></span><span>filter cards</span>
+<span><kbd class="mod">Ctrl</kbd>+<kbd>Z</kbd></span><span>undo</span>
+</div>
 <div class="os-only">
 <h3>Shortcuts</h3>
 <div class="kr"><span>Lock / unlock</span><button class="key" id="kLock"></button></div>
@@ -214,9 +239,8 @@ function persist(json) {
 // The DOM is the model: read it back, update counts, save (debounced).
 // Cards save as { t: text, ms: time tracked so far, since: when the current
 // tracking stretch started }.
-function save() {
-  timer = 0;
-  const cols = [...B.children].map(col => ({
+function colsData() {
+  return [...B.children].map(col => ({
     name: col.querySelector('h2 span').textContent,
     track: col.dataset.track === '1',
     cards: [...col.querySelectorAll('.list > .card')].map(c => {
@@ -227,7 +251,10 @@ function save() {
       return o;
     })
   }));
-  const bc = document.body.classList;
+}
+function save() {
+  timer = 0;
+  const cols = colsData(), bc = document.body.classList;
   beat = Date.now();
   return persist(JSON.stringify({ at: beat, mini: bc.contains('mini'), locked: bc.contains('locked'), ontop: bc.contains('ontop'), opacity, theme, accent, keys, cols, archive }));
 }
@@ -236,6 +263,17 @@ function sync() {
   lists = [...B.querySelectorAll('.list')];
   counts = [...B.querySelectorAll('.col h2 span+span')];
   track();
+  // Undo: remember the board as it was before each change. Typing a column
+  // name in settings counts as one step.
+  const cur = JSON.stringify({ cols: colsData(), archive });
+  if (lastBoard !== null && cur !== lastBoard && !restoring) {
+    const typingName = document.activeElement && document.activeElement.matches('#stc input');
+    if (!typingName || Date.now() - lastPush > 800) { undos.push(lastBoard); if (undos.length > 50) undos.shift() }
+    lastPush = Date.now();
+  }
+  lastBoard = cur;
+  if (!FL.hidden) applyFilter();
+  if (sel && !sel.isConnected) sel = null;
   lists.forEach(thumb);
   indexWords();
   lists.forEach((l, i) => counts[i].textContent = l.children.length || '');
@@ -248,6 +286,7 @@ function card(v) {
   c.className = 'card';
   c.innerHTML = '<span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
   c.firstChild.textContent = o.t;
+  linkify(c.firstChild);
   if (o.ms) c.dataset.ms = o.ms;
   if (o.since) c.dataset.since = o.since;
   if (o.due && o.id) { c.dataset.id = o.id; c.dataset.due = o.due; c.dataset.mins = o.mins || 0 }
@@ -348,9 +387,11 @@ function build(data) {
 
 // Delete
 B.addEventListener('click', e => {
-  const ck = e.target.closest('.ck');
+  const ck = e.target.closest('.ck'), lk = e.target.closest('.lk');
   if (ck) return openTimer(ck.closest('.card'), ck);
-  if (e.target.classList.contains('x')) archiveCard(e.target.parentNode);
+  if (e.target.classList.contains('x')) return archiveCard(e.target.parentNode);
+  if (lk && !justDragged) return openLink(lk.dataset.href);
+  if (!justDragged) select(e.target.closest('.list > .card'));
 });
 
 // Edit on double-click: Enter saves, Esc cancels, empty deletes.
@@ -358,6 +399,7 @@ B.addEventListener('dblclick', e => edit(e.target.closest('.t')));
 function edit(t) {
   if (!t || t.isContentEditable) return;
   const old = t.textContent;
+  t.textContent = old; // drop link elements while editing
   t.spellcheck = true;
   try { t.contentEditable = 'plaintext-only' } catch (_) { t.contentEditable = 'true' }
   t.focus();
@@ -367,11 +409,12 @@ function edit(t) {
     t.contentEditable = 'false';
     t.textContent = t.textContent.replace(/\s+/g, ' ').trim();
     if (!t.textContent) { t.textContent = old; return archiveCard(t.parentNode); } // cleared = archive
+    linkify(t);
     sync();
   };
   const key = ev => {
-    if (ev.key === 'Enter') { ev.preventDefault(); t.blur(); }
-    else if (ev.key === 'Escape') { t.textContent = old; t.blur(); }
+    if (ev.key === 'Enter') { ev.preventDefault(); ev.stopPropagation(); t.blur(); }
+    else if (ev.key === 'Escape') { ev.stopPropagation(); t.textContent = old; t.blur(); }
   };
   t.addEventListener('keydown', key);
   t.addEventListener('blur', done, { once: true });
@@ -427,6 +470,7 @@ function end() {
     d.c.style.transform = d.c.style.width = '';
     d.ph.replaceWith(d.c);
     document.body.classList.remove('dragging');
+    justDragged = true; setTimeout(() => { justDragged = false });
     sync();
   }
   d = null;
@@ -446,6 +490,7 @@ B.addEventListener('pointerover', e => {
   zc = c;
   const r = c.getBoundingClientRect(), k = 12.5 / parseFloat(getComputedStyle(c).fontSize); // mini -> full size
   Z.firstChild.textContent = c.firstChild.textContent;
+  linkify(Z.firstChild);
   Z.className = c.className;
   const w = Math.min(r.width * k, innerWidth - 8);
   Z.style.cssText = `width:${w}px;transition:none;transform:none`;
@@ -467,6 +512,7 @@ Z.addEventListener('pointerdown', e => {
   d = { c: zc, sx: e.clientX, sy: e.clientY, on: false, from: Z.getBoundingClientRect() };
 });
 addEventListener('pointermove', () => { if (d && d.on && !Z.hidden) hideZoom() });
+Z.addEventListener('click', e => { const lk = e.target.closest('.lk'); if (lk && !justDragged) openLink(lk.dataset.href) });
 Z.addEventListener('dblclick', () => { const c = zc; hideZoom(); edit(c && c.querySelector('.t')) });
 Z.addEventListener('wheel', e => { const l = zc && zc.parentNode; hideZoom(); if (l) l.scrollBy(0, e.deltaY) }, { passive: true });
 addEventListener('pointercancel', end);
@@ -542,7 +588,8 @@ B.addEventListener('scroll', hideGhost, true);
 // Mini mode: half-size text; cards grow back to full size on hover.
 document.getElementById('mm').onclick = () => { document.body.classList.toggle('mini'); hideZoom(); sync(); };
 
-// Lock: everything except the lock button ignores mouse and keyboard.
+// Lock: the mouse only reaches the lock button (clicks pass through to the
+// windows behind); the keyboard controls keep working.
 const lk = document.getElementById('lk');
 // Locked windows also let clicks through to whatever is behind them, except on
 // the lock button itself (where the OS supports it; see passthrough in main.rs).
@@ -597,9 +644,6 @@ function setOnTop(on) {
 }
 tp.onclick = () => { setOnTop(!document.body.classList.contains('ontop')); sync(); };
 lk.onclick = () => { setLocked(!document.body.classList.contains('locked')); sync(); };
-addEventListener('keydown', e => {
-  if (document.body.classList.contains('locked') && e.target !== lk) { e.preventDefault(); e.stopPropagation(); }
-}, true);
 
 // Settings (cogwheel): opacity and columns. Right-click is left to the system.
 const st = document.getElementById('st'), stc = document.getElementById('stc'), cg = document.getElementById('cg');
@@ -695,6 +739,7 @@ document.getElementById('th').onclick = e => { const b = e.target.closest('butto
 
 // Global shortcuts: lock/unlock and move-window-to-mouse, recorded by pressing keys.
 const MAC = /Mac/.test(navigator.userAgent);
+if (MAC) for (const k of document.querySelectorAll('kbd.mod')) k.textContent = '⌘';
 let keys = { lock: 'CmdOrCtrl+Alt+KeyL', mv: 'CmdOrCtrl+Alt+KeyM' }, recording = null;
 const kBtn = { lock: document.getElementById('kLock'), mv: document.getElementById('kMove') }, kErr = document.getElementById('kErr');
 function pretty(k) {
@@ -725,6 +770,118 @@ addEventListener('keydown', e => {
   }
   recording = null; paintKeys(); applyKeys(); sync();
 }, true);
+// Links: web addresses in cards become clickable and open in the browser.
+const URL_RE = /\bhttps?:\/\/[^\s<>"']*[^\s<>"'.,;:!?)\]]/g;
+let justDragged = false;
+function linkify(t) {
+  const s = t.textContent;
+  if (!s.includes('http')) return;
+  const f = document.createDocumentFragment();
+  let i = 0, m;
+  URL_RE.lastIndex = 0;
+  while ((m = URL_RE.exec(s))) {
+    if (m.index > i) f.append(s.slice(i, m.index));
+    const a = document.createElement('a');
+    a.className = 'lk'; a.textContent = a.dataset.href = m[0]; a.title = 'Open in browser';
+    f.append(a);
+    i = m.index + m[0].length;
+  }
+  if (!i) return;
+  if (i < s.length) f.append(s.slice(i));
+  t.replaceChildren(f);
+}
+function openLink(url) { if (invoke) invoke('open_url', { url }); else window.open(url, '_blank') }
+
+// Undo (Ctrl/⌘+Z outside text fields): rebuild the board from the snapshot.
+let undos = [], lastBoard = null, lastPush = 0, restoring = false;
+function undo() {
+  const snap = undos.pop();
+  if (!snap) return;
+  const data = JSON.parse(snap);
+  hideZoom(); hideTimer(); select(null);
+  restoring = true;
+  B.replaceChildren();
+  for (const c of data.cols) addColumn(c);
+  archive = data.archive || [];
+  sync();
+  restoring = false; lastPush = 0;
+  if (!st.hidden) renderSettings();
+}
+
+// Quick filter (Ctrl/⌘+F or /): fade the cards that don't match.
+const FL = document.getElementById('fl'), flIn = document.getElementById('flIn'), flN = document.getElementById('flN');
+function applyFilter() {
+  const q = flIn.value.trim().toLowerCase();
+  let n = 0, all = 0;
+  for (const c of B.querySelectorAll('.list > .card')) {
+    const hit = !q || c.firstChild.textContent.toLowerCase().includes(q);
+    c.classList.toggle('dim', !hit); all++; if (hit) n++;
+  }
+  flN.textContent = q ? `${n} of ${all}` : '';
+}
+function openFilter() { FL.hidden = false; flIn.focus(); flIn.select() }
+function closeFilter() { flIn.blur(); FL.hidden = true; flIn.value = ''; applyFilter() }
+flIn.addEventListener('input', applyFilter);
+flIn.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeFilter(); e.stopPropagation() }
+  else if (e.key === 'Enter') flIn.blur();
+});
+flIn.addEventListener('blur', () => { if (!flIn.value.trim()) closeFilter() });
+
+// Keyboard: arrows select, Shift+arrows move, Enter edits, Delete archives,
+// N adds, T opens the timer, Esc clears the selection.
+let sel = null;
+function select(c) {
+  if (sel) sel.classList.remove('sel');
+  sel = c || null;
+  if (sel) { sel.classList.add('sel'); sel.scrollIntoView({ block: 'nearest' }) }
+}
+function colCards(col) { return [...col.querySelectorAll('.list > .card')] }
+function keyNav(e) {
+  const cols = [...B.children], col = sel && sel.closest('.col'), ci = cols.indexOf(col);
+  const cards = col ? colCards(col) : [], i = cards.indexOf(sel);
+  const k = e.key;
+  if (k === 'ArrowUp' || k === 'ArrowDown') {
+    if (!sel) return select(cols.map(colCards).flat()[0]);
+    const j = i + (k === 'ArrowUp' ? -1 : 1);
+    if (j < 0 || j >= cards.length) return;
+    if (e.shiftKey) { k === 'ArrowUp' ? cards[j].before(sel) : cards[j].after(sel); sel.scrollIntoView({ block: 'nearest' }); sync() }
+    else select(cards[j]);
+  } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+    if (!sel) return select(cols.map(colCards).flat()[0]);
+    const step = k === 'ArrowLeft' ? -1 : 1;
+    if (e.shiftKey) {
+      const to = cols[ci + step];
+      if (!to) return;
+      const there = colCards(to), list = to.querySelector('.list');
+      list.insertBefore(sel, there[Math.min(i, there.length)] || null);
+      sel.scrollIntoView({ block: 'nearest' }); sync();
+    } else {
+      for (let c = ci + step; c >= 0 && c < cols.length; c += step) {
+        const there = colCards(cols[c]);
+        if (there.length) return select(there[Math.min(i, there.length - 1)]);
+      }
+    }
+  } else if ((k === 'Enter' || k === 'F2') && sel) edit(sel.firstChild);
+  else if ((k === 'Delete' || k === 'Backspace') && sel) {
+    const next = cards[i + 1] || cards[i - 1];
+    archiveCard(sel); select(next);
+  } else if (k === 'n' || k === 'N') B.querySelector('.add').focus();
+  else if ((k === 't' || k === 'T') && sel) openTimer(sel, sel);
+  else if (k === 'Escape') select(null);
+  else return false;
+  return true;
+}
+addEventListener('keydown', e => {
+  const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable=true], [contenteditable=plaintext-only]');
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) { if (!typing) { e.preventDefault(); undo() } return }
+  if (mod && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFilter(); return }
+  if (typing || mod || e.altKey || !st.hidden || !TM.hidden) return;
+  if (e.key === '/') { e.preventDefault(); openFilter(); return }
+  if (keyNav(e)) e.preventDefault();
+});
+
 // Timers: click a card's clock to set one in minutes. The waiting happens in
 // Rust (src-tauri/src/timers.rs), which shows an OS notification when it's due;
 // if that can't be delivered, the page pings and shows itself at full opacity.
@@ -738,6 +895,9 @@ function openTimer(card, anchor) {
   TM.querySelector('.set').hidden = !!due; TM.querySelector('.run').hidden = !due;
   if (due) tmLeft.textContent = `Ends ${new Date(due).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${left(due - Date.now())} left`;
   else tmIn.value = lastMins;
+  const tracked = elapsed(card);
+  TM.querySelector('.trk').hidden = !tracked;
+  document.getElementById('tmTrk').textContent = `Tracked ${fmt(tracked)}`;
   TM.hidden = false;
   const r = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : anchor, w = TM.offsetWidth, h = TM.offsetHeight;
   TM.style.left = Math.max(4, Math.min(r.right - w, innerWidth - w - 4)) + 'px';
@@ -755,6 +915,12 @@ function startTimer() {
 }
 document.getElementById('tmGo').onclick = startTimer;
 tmIn.addEventListener('keydown', e => { if (e.key === 'Enter') startTimer() });
+document.getElementById('tmReset').onclick = () => {
+  if (!tmCard) return;
+  delete tmCard.dataset.ms;
+  if (+tmCard.dataset.since) tmCard.dataset.since = Date.now();
+  hideTimer(); sync();
+};
 document.getElementById('tmX').onclick = () => { if (tmCard) { delete tmCard.dataset.due; delete tmCard.dataset.mins } hideTimer(); sync(); };
 addEventListener('pointerdown', e => { if (!TM.hidden && !TM.contains(e.target) && !e.target.closest('.ck')) hideTimer() }, true);
 addEventListener('keydown', e => { if (e.key === 'Escape' && !TM.hidden) hideTimer() });
