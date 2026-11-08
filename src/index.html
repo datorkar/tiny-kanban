@@ -644,7 +644,8 @@ function setOnTop(on) {
 tp.onclick = () => { setOnTop(!document.body.classList.contains('ontop')); sync(); };
 lk.onclick = () => { setLocked(!document.body.classList.contains('locked')); sync(); };
 addEventListener('keydown', e => {
-  if (document.body.classList.contains('locked') && e.target !== lk) { e.preventDefault(); e.stopPropagation(); }
+  // Locked: only Enter/Space/Tab on the focused lock button itself get through (to unlock).
+  if (document.body.classList.contains('locked') && !(e.target === lk && ['Enter', ' ', 'Tab'].includes(e.key))) { e.preventDefault(); e.stopPropagation(); }
 }, true);
 
 // Settings (cogwheel): opacity and columns. Right-click is left to the system.
@@ -877,9 +878,10 @@ function keyNav(e) {
 addEventListener('keydown', e => {
   const typing = e.target.closest && e.target.closest('input, textarea, [contenteditable=true], [contenteditable=plaintext-only]');
   const mod = e.ctrlKey || e.metaKey;
+  if (document.body.classList.contains('locked')) return; // the board is read-only while locked
   if (mod && !e.shiftKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) { if (!typing) { e.preventDefault(); undo() } return }
   if (mod && !e.altKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFilter(); return }
-  if (typing || mod || e.altKey || !st.hidden || !TM.hidden) return;
+  if (typing || mod || e.altKey || !st.hidden || !TM.hidden || document.body.classList.contains('locked')) return;
   if (e.key === '/') { e.preventDefault(); openFilter(); return }
   if (keyNav(e)) e.preventDefault();
 });
