@@ -1,0 +1,16 @@
+# Keeps the pinned GitHub Actions and the dependencies up to date via pull requests.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ['*'] }
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule: { interval: monthly }
+    groups:
+      rust: { patterns: ['*'] }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: monthly }
