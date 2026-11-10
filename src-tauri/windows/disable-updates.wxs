@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tiny Kanban: MSI fragment (added to Tauri's WiX template via tauri.conf.json).
+
+  For IT: install with   msiexec /i tiny-kanban_<version>_x64_en-US.msi DISABLEUPDATES=1 /qn
+  to turn off self-updates. This writes DisableUpdates=1 under
+  HKLM\SOFTWARE\TinyKanban, which the app checks before looking for updates.
+  The value is removed on uninstall; pass the property again on upgrades
+  (or use the Group Policy key HKLM\SOFTWARE\Policies\TinyKanban instead).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <Property Id="DISABLEUPDATES" Secure="yes" />
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="DisableUpdatesComponent" Guid="*">
+        <Condition>DISABLEUPDATES</Condition>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\TinyKanban" Name="DisableUpdates" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

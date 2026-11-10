@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod efficiency;
+mod policy;
 mod timers;
 
 use std::{
@@ -24,20 +25,44 @@ fn board_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("board.json"))
 }
 
-#[tauri::command]
-fn load(app: AppHandle) -> String {
-    board_path(&app)
-        .ok()
-        .and_then(|p| fs::read_to_string(p).ok())
-        .unwrap_or_default()
+fn is_json(text: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(text).is_ok()
 }
 
-/// Write atomically (tmp file + rename) so a crash never corrupts the board.
+/// Loads the board. A damaged file (cut short by a power cut, or edited by
+/// hand) is never overwritten: it's kept as board.json.corrupt-<unix time> and
+/// the daily backup is used instead, if there is one. A good file is copied to
+/// board.json.bak at most once a day.
+#[tauri::command]
+fn load(app: AppHandle) -> String {
+    let Ok(path) = board_path(&app) else { return String::new() };
+    let Ok(text) = fs::read_to_string(&path) else { return String::new() };
+    let backup = path.with_extension("json.bak");
+    if !is_json(&text) {
+        let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let _ = fs::rename(&path, path.with_file_name(format!("board.json.corrupt-{secs}")));
+        return fs::read_to_string(&backup).ok().filter(|b| is_json(b)).unwrap_or_default();
+    }
+    let stale = fs::metadata(&backup)
+        .and_then(|m| m.modified())
+        .map(|t| t.elapsed().map_or(true, |age| age > Duration::from_secs(24 * 3600)))
+        .unwrap_or(true);
+    if stale {
+        let _ = fs::copy(&path, &backup);
+    }
+    text
+}
+
+/// Writes atomically: to a temporary file, flushed to disk, then renamed over
+/// the board, so a crash or power cut leaves either the old or the new board.
 #[tauri::command]
 fn save(app: AppHandle, data: String) -> Result<(), String> {
+    use std::io::Write;
     let path = board_path(&app)?;
     let tmp = path.with_extension("tmp");
-    fs::write(&tmp, data).map_err(|e| e.to_string())?;
+    let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+    f.write_all(data.as_bytes()).and_then(|_| f.sync_all()).map_err(|e| e.to_string())?;
+    drop(f);
     fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 
@@ -68,6 +93,9 @@ fn update_target() -> Option<String> {
 /// Returns the new version if one is available (and remembers it for install).
 #[tauri::command]
 async fn check_update(app: AppHandle, pending: State<'_, Pending>) -> Result<Option<String>, String> {
+    if policy::updates_disabled() {
+        return Ok(None); // managed by IT
+    }
     let Some(target) = update_target() else { return Ok(None) };
     let update = app
         .updater_builder()
@@ -84,12 +112,21 @@ async fn check_update(app: AppHandle, pending: State<'_, Pending>) -> Result<Opt
 
 #[tauri::command]
 async fn install_update(app: AppHandle, pending: State<'_, Pending>) -> Result<(), String> {
+    if policy::updates_disabled() {
+        return Err("Updates are managed by your organisation".into());
+    }
     let update = pending.0.lock().unwrap().take().ok_or("No update available")?;
     update
         .download_and_install(|_, _| {}, || {})
         .await
         .map_err(|e| e.to_string())?;
     app.restart()
+}
+
+/// True when IT has turned self-updates off (see policy.rs).
+#[tauri::command]
+fn updates_disabled() -> bool {
+    policy::updates_disabled()
 }
 
 // ---- Window modes ----------------------------------------------------------
@@ -214,13 +251,15 @@ fn open_url(url: String) -> Result<(), String> {
     if !ok {
         return Err("not a web link".into());
     }
+    // Windows: the shell's own "open", as Explorer does. (Not rundll32
+    // url.dll, which security tools rightly treat as suspicious.)
     #[cfg(windows)]
-    let mut cmd = {
-        use std::os::windows::process::CommandExt;
-        let mut c = std::process::Command::new("rundll32");
-        c.args(["url.dll,FileProtocolHandler", &url]).creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-        c
-    };
+    {
+        use windows::core::{w, HSTRING, PCWSTR};
+        use windows::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+        let r = unsafe { ShellExecuteW(None, w!("open"), &HSTRING::from(url.as_str()), PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL) };
+        return if r.0 as isize > 32 { Ok(()) } else { Err(format!("couldn't open the link (error {})", r.0 as isize)) };
+    }
     #[cfg(target_os = "macos")]
     let mut cmd = {
         let mut c = std::process::Command::new("open");
@@ -233,7 +272,8 @@ fn open_url(url: String) -> Result<(), String> {
         c.arg(&url);
         c
     };
-    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+    #[cfg(not(windows))]
+    return cmd.spawn().map(|_| ()).map_err(|e| e.to_string());
 }
 
 // ---- Launch on login --------------------------------------------------------
@@ -306,6 +346,15 @@ fn move_to_cursor(w: &WebviewWindow) {
 
 fn main() {
     tauri::Builder::default()
+        // A second launch focuses the running window instead of opening another
+        // copy that would save over the same board.
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -362,7 +411,8 @@ fn main() {
             autostart,
             set_shortcuts,
             timers::set_timers,
-            open_url
+            open_url,
+            updates_disabled
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tiny-kanban");
