@@ -73,3 +73,17 @@ fn registry() -> bool {
 fn registry() -> bool {
     false
 }
+
+#[cfg(all(test, windows))]
+mod tests {
+    /// Checks the registry switch against what an installer test set up:
+    /// EXPECT_UPDATES_DISABLED=1 or 0 (skipped when unset).
+    #[test]
+    fn registry_switch() {
+        match std::env::var("EXPECT_UPDATES_DISABLED").as_deref() {
+            Ok("1") => assert!(super::registry(), "expected DisableUpdates to be found"),
+            Ok("0") => assert!(!super::registry(), "expected no DisableUpdates value"),
+            _ => {}
+        }
+    }
+}
