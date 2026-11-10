@@ -35,6 +35,9 @@ jobs:
             args: --target universal-apple-darwin
             out: src-tauri/target/universal-apple-darwin/release/bundle
     runs-on: ${{ matrix.os }}
+    # Releases run in the protected "release" environment, which holds the
+    # update-signing key; ordinary builds don't get it (and skip update signatures).
+    environment: ${{ (startsWith(github.ref, 'refs/tags/v') || (inputs.release && github.ref == 'refs/heads/main')) && 'release' || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
