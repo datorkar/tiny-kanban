@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tiny Kanban</title>
 <style>
-:root{--sys:system-ui,-apple-system,"Segoe UI",sans-serif;--bg:#f4f4f5;--col:#e9e9ec;--card:#fff;--fg:#1c1c1f;--mute:#77777f;--acc:#4f6ef7;--sh:0 1px 2px #0002;color-scheme:light dark}
+:root{--sys:system-ui,-apple-system,"Segoe UI",sans-serif;--bg:#f4f4f5;--col:#e9e9ec;--card:#fff;--fg:#1c1c1f;--mute:#77777f;--acc:#4f6ef7;--red:#e5484d;--sh:0 1px 2px #0002;color-scheme:light dark}
 /* Theme: follows the system unless set to light or dark in settings */
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#18181b;--col:#232327;--card:#2e2e33;--fg:#ececf1;--mute:#8d8d96;--sh:0 1px 2px #0006;color-scheme:dark}}
 :root[data-theme=dark]{--bg:#18181b;--col:#232327;--card:#2e2e33;--fg:#ececf1;--mute:#8d8d96;--sh:0 1px 2px #0006;color-scheme:dark}
@@ -90,18 +90,28 @@ body:not(.dragging) .card:hover .ck{display:block}
 .run .ck,.tmr .ck{color:var(--acc)}
 .ck{cursor:pointer;border-radius:50%}
 .ck:hover{color:var(--fg)}
-.tmr .ck .face{fill:currentColor;fill-opacity:.25} /* a timer is set */
+.tmr .ck .face{fill:currentColor;fill-opacity:.25} /* a timer or deadline is set */
+/* Timer or deadline chip at the right, next to the clock; red once a deadline has passed */
+.due{flex:none;margin:0 .25em 0 .45em;padding:0 .38em;border-radius:.3em;font-size:.82em;line-height:1.45;white-space:nowrap;vertical-align:.06em;color:var(--acc);background:#8882;background:color-mix(in srgb,var(--acc) 15%,transparent)}
+.due:empty{display:none}
+.card:has([contenteditable=plaintext-only]) .due,.card:has([contenteditable=true]) .due{display:none}
+.late .due{color:var(--red);background:color-mix(in srgb,var(--red) 16%,transparent)}
+.late .ck{color:var(--red)}
 /* Timer done: the card pulses for a few seconds */
 .ding{animation:ding 1s ease-in-out 5}
 @keyframes ding{50%{box-shadow:0 0 0 2.5px var(--acc)}}
 #tm{position:fixed;z-index:11;padding:8px 10px;background:var(--card);border-radius:7px;box-shadow:0 6px 20px #0005;font:12px/1.35 var(--sys);color:var(--fg);display:flex;align-items:center;gap:6px;white-space:nowrap}
-#tm[hidden],#tm [hidden]{display:none}
+#tm[hidden],#tm [hidden]{display:none!important}
+#tm{width:250px}
 #tm .set,#tm .run{display:flex;align-items:center;gap:6px}
-#tm input{width:52px;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
+#tm .run span{flex:1;overflow:hidden;text-overflow:ellipsis}
+#tm input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
 #tm input:focus{border-color:var(--acc)}
 #tm button{border:0;border-radius:4px;height:24px;padding:0 9px;font:inherit;cursor:pointer;background:var(--acc);color:#fff}
 #tm #tmX{background:#8883;color:var(--fg)}
-#tm .lbl{color:var(--mute)}
+#tm .hint{font-size:11px;color:var(--mute);overflow:hidden;text-overflow:ellipsis}
+#tm .hint:empty{display:none}
+#tm .hint.bad{color:var(--red)}
 #tm{flex-direction:column;align-items:stretch}
 #tm .trk{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--mute)}
 #tm #tmReset{background:#8883;color:var(--fg)}
@@ -140,8 +150,9 @@ body:not(.dragging) .card:hover .ck{display:block}
 .sb[hidden]{display:none}
 .list{flex:1;min-height:0;overflow-y:auto;padding:.24em .4em;display:flex;flex-direction:column;gap:.32em}
 .card{position:relative;background:var(--card);border-radius:.4em;padding:.4em 2.6em .4em .56em;box-shadow:var(--sh);transition:font-size .15s ease-out;cursor:grab;user-select:none;-webkit-user-select:none;overflow-wrap:anywhere;touch-action:none}
-.card .t{outline:none;display:block;min-height:1.35em}
-.card .t[contenteditable=plaintext-only],.card .t[contenteditable=true]{cursor:text;user-select:text;-webkit-user-select:text}
+.card{display:flex;align-items:center}
+.card .t{outline:none;display:block;flex:1;min-width:0;min-height:1.35em}
+.card .t[contenteditable=plaintext-only],.card .t[contenteditable=true]{display:block;cursor:text;user-select:text;-webkit-user-select:text}
 .card:has([contenteditable=plaintext-only]),.card:has([contenteditable=true]){box-shadow:0 0 0 1.5px var(--acc)}
 .x{position:absolute;top:50%;transform:translateY(-50%);right:.24em;border:0;background:none;color:var(--mute);font-size:1.04em;line-height:1;width:1.23em;height:1.23em;border-radius:3px;padding:0;cursor:pointer;opacity:0}
 .card:hover .x{opacity:1}
@@ -174,10 +185,11 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <header id="h" data-tauri-drag-region><span>Tiny Kanban</span><button id="mm" title="Mini mode"></button><button id="up" hidden></button><button id="cg" title="Settings"><svg viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M6.9 1h2.2l.4 1.9 1.2.5 1.6-1.1 1.6 1.6-1.1 1.6.5 1.2 1.9.4v2.2l-1.9.4-.5 1.2 1.1 1.6-1.6 1.6-1.6-1.1-1.2.5-.4 1.9H6.9l-.4-1.9-1.2-.5-1.6 1.1-1.6-1.6 1.1-1.6-.5-1.2L1 9.1V6.9l1.9-.4.5-1.2-1.1-1.6 1.6-1.6 1.6 1.1 1.2-.5zM8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8z"/></svg></button><button id="tp" title="Always on top"><svg viewBox="0 0 16 16"><path d="M5.5 1.5h5l-.8 4.2 2.8 2.8v1.2h-9V8.5l2.8-2.8z" fill="currentColor"/><path d="M8 9.7V15" stroke="currentColor" stroke-width="1.6"/></svg></button><button id="lk" title="Lock"><svg viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7.5" rx="1.5" fill="currentColor"/><path class="on" d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.7"/><path class="off" d="M5.2 7V5a2.8 2.8 0 0 1 5.5-.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><button id="mn" title="Minimise">&#8211;</button><button id="cl" title="Close">&#215;</button></header>
 <div id="b"></div>
 <span id="g" hidden></span>
-<div id="z" class="card" hidden><span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
+<div id="z" class="card" hidden><span class="t"></span><span class="due"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span></div>
 <div id="tm" hidden>
-<div class="set"><span class="lbl">Timer</span><input id="tmIn" type="number" min="1" max="1440" step="1" value="25" aria-label="Minutes"><span class="lbl">min</span><button id="tmGo">Start</button></div>
-<div class="run"><span id="tmLeft"></span><button id="tmX">Cancel</button></div>
+<div class="run"><span id="tmLeft"></span><button id="tmX">Clear</button></div>
+<div class="set"><input id="tmIn" placeholder="25, 1h30, 15:00, fri, 14/11" aria-label="Timer or deadline" spellcheck="false" autocomplete="off"><button id="tmGo">Set</button></div>
+<div class="hint" id="tmHint"></div>
 <div class="trk" hidden><span id="tmTrk"></span><button id="tmReset" title="Set the tracked time back to zero">Reset</button></div>
 </div>
 <div id="fl" hidden><input id="flIn" placeholder="Filter cards…" spellcheck="false" aria-label="Filter cards"><span id="flN"></span></div>
@@ -197,7 +209,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <span><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></span><span>select a card</span>
 <span><kbd>Shift</kbd> + arrows</span><span>move it</span>
 <span><kbd>Enter</kbd> · <kbd>Del</kbd></span><span>edit · archive</span>
-<span><kbd>N</kbd> · <kbd>T</kbd></span><span>new card · timer</span>
+<span><kbd>N</kbd> · <kbd>T</kbd></span><span>new card · timer or deadline</span>
 <span><kbd class="mod">Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd></span><span>filter cards</span>
 <span><kbd class="mod">Ctrl</kbd>+<kbd>Z</kbd></span><span>undo</span>
 </div>
@@ -239,7 +251,8 @@ function persist(json) {
 
 // The DOM is the model: read it back, update counts, save (debounced).
 // Cards save as { t: text, ms: time tracked so far, since: when the current
-// tracking stretch started }.
+// tracking stretch started }, plus { id, due } with a timer or deadline
+// (dl: 1 for a deadline, late: 1 once it has passed and notified).
 function colsData() {
   return [...B.children].map(col => ({
     name: col.querySelector('h2 span').textContent,
@@ -248,7 +261,11 @@ function colsData() {
       const o = { t: c.firstChild.textContent };
       if (+c.dataset.ms) o.ms = +c.dataset.ms;
       if (+c.dataset.since) o.since = +c.dataset.since;
-      if (+c.dataset.due) { o.id = c.dataset.id; o.due = +c.dataset.due; o.mins = +c.dataset.mins }
+      if (+c.dataset.due) {
+        o.id = c.dataset.id; o.due = +c.dataset.due;
+        if (c.dataset.dl) o.dl = 1;
+        if (c.dataset.late) o.late = 1;
+      }
       return o;
     })
   }));
@@ -285,32 +302,39 @@ function sync() {
 function card(v) {
   const o = typeof v === 'string' ? { t: v } : v, c = document.createElement('div');
   c.className = 'card';
-  c.innerHTML = '<span class="t"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
+  c.innerHTML = '<span class="t"></span><span class="due"></span><button class="x" title="Archive">×</button><span class="ck"><svg viewBox="0 0 16 16"><circle class="face" cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path class="hd" d="M8 8V3.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/></svg></span>';
   c.firstChild.textContent = o.t;
   linkify(c.firstChild);
   if (o.ms) c.dataset.ms = o.ms;
   if (o.since) c.dataset.since = o.since;
-  if (o.due && o.id) { c.dataset.id = o.id; c.dataset.due = o.due; c.dataset.mins = o.mins || 0 }
+  if (o.due && o.id) {
+    c.dataset.id = o.id; c.dataset.due = o.due;
+    if (o.dl) c.dataset.dl = 1;
+    if (o.late) c.dataset.late = 1;
+  }
   return c;
 }
 
 // Time tracking: a card's clock runs while it sits in a column that tracks
 // time; leaving the column banks the elapsed time. Called on every change.
+// Cards in the last column count as done, and drop their deadlines.
 function track() {
   const now = Date.now();
   for (const col of B.children) {
-    const on = col.dataset.track === '1';
+    const on = col.dataset.track === '1', done = isDone(col);
     for (const c of col.querySelectorAll('.list > .card')) {
+      if (done && c.dataset.dl) clearDue(c);
       const since = +c.dataset.since || 0;
       if (on && !since) c.dataset.since = now;
       if (!on && since) { c.dataset.ms = (+c.dataset.ms || 0) + now - since; delete c.dataset.since; }
       if (!on) c.querySelector('.ck .hd').style.transform = ''; // stopped: hand back to 12 o'clock
       c.classList.toggle('run', on);
       c.classList.toggle('timed', on || +c.dataset.ms > 0);
-      c.classList.toggle('tmr', !!+c.dataset.due);
+      chip(c, now);
     }
   }
 }
+function isDone(col) { return B.children.length > 1 && col === B.lastElementChild }
 // Clocks only count while the app runs. Each save stamps the time ("at"), and
 // running clocks save once a minute, so after a restart running cards are
 // credited up to the last stamp. A long gap between beats means the computer
@@ -350,9 +374,9 @@ addEventListener('pointermove', e => { // move, not over: stays current after a 
   const c = ck.closest('.card'), src = c === Z ? zc : c;
   if (!src) return;
   const lines = [];
-  if (+src.dataset.due) lines.push(`Timer: ${left(src.dataset.due - Date.now())} left`);
+  if (+src.dataset.due) lines.push(dueText(src));
   if (src.classList.contains('timed')) lines.push(`Time tracked: ${fmt(elapsed(src))}` + (src.classList.contains('run') ? ' (running)' : ''));
-  lines.push(+src.dataset.due ? 'Click to see or cancel the timer' : 'Click to set a timer');
+  lines.push(+src.dataset.due ? 'Click to change or clear it' : 'Click to set a timer or deadline');
   ck.title = lines.join('\n');
 });
 
@@ -492,6 +516,7 @@ B.addEventListener('pointerover', e => {
   const r = c.getBoundingClientRect(), k = 12.5 / parseFloat(getComputedStyle(c).fontSize); // mini -> full size
   Z.firstChild.textContent = c.firstChild.textContent;
   linkify(Z.firstChild);
+  Z.querySelector('.due').textContent = c.querySelector('.due').textContent;
   Z.className = c.className;
   const w = Math.min(r.width * k, innerWidth - 8);
   Z.style.cssText = `width:${w}px;transition:none;transform:none`;
@@ -883,19 +908,129 @@ addEventListener('keydown', e => {
   if (keyNav(e)) e.preventDefault();
 });
 
-// Timers: click a card's clock to set one in minutes. The waiting happens in
-// Rust (src-tauri/src/timers.rs), which shows an OS notification when it's due;
+// Timers and deadlines: click a card's clock (or press T) and type when.
+// 25, 1h30 or 90m start a timer; 15:00, 3pm, fri, tomorrow 9, 14/11 or
+// 14 nov 17:00 set a deadline. A timer clears once it's done; a deadline stays,
+// red, until it's cleared or the card reaches the last column. The waiting
+// happens in Rust (src-tauri/src/timers.rs), which shows an OS notification;
 // if that can't be delivered, the page pings and shows itself at full opacity.
-const TM = document.getElementById('tm'), tmIn = document.getElementById('tmIn'), tmLeft = document.getElementById('tmLeft');
-let tmCard = null, lastMins = 25, timerSig = '', webTimer, flashT, audio;
-function left(ms) { const m = Math.ceil(ms / 60000); return m <= 1 ? (ms < 60000 ? 'under a minute' : '1 min') : m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m` }
+const TM = document.getElementById('tm'), tmIn = document.getElementById('tmIn'), tmLeft = document.getElementById('tmLeft'), tmHint = document.getElementById('tmHint');
+let tmCard = null, lastWhen = '25', timerSig = '', webTimer, flashT, audio;
+const DAY = 864e5, EOD = 17; // a deadline without a time is at 17:00
+
+// Day and month names in English and the system language, for parseWhen.
+const NAMES = (() => {
+  const locs = [undefined, 'en'], wd = [], mo = [], today = [], tomorrow = ['tmrw'];
+  for (const l of locs) {
+    try {
+      for (let i = 0; i < 7; i++) wd.push([new Date(2024, 0, 7 + i).toLocaleDateString(l, { weekday: 'long' }).toLowerCase(), i]); // 7 Jan 2024 was a Sunday
+      for (let i = 0; i < 12; i++) mo.push([new Date(2024, i, 1).toLocaleDateString(l, { month: 'long' }).toLowerCase(), i]);
+      const rt = new Intl.RelativeTimeFormat(l, { numeric: 'auto' });
+      today.push(rt.format(0, 'day').toLowerCase()); tomorrow.push(rt.format(1, 'day').toLowerCase());
+    } catch (_) {}
+  }
+  return { wd, mo, today, tomorrow };
+})();
+// Numeric dates follow the system's order: 14/11 or 11/14.
+const MDY = (() => { try { const t = new Intl.DateTimeFormat().formatToParts(new Date(2024, 10, 22)).map(p => p.type); return t.indexOf('month') < t.indexOf('day') } catch (_) { return false } })();
+const named = (list, t, min) => t.length >= min ? (list.find(([n]) => n.startsWith(t)) || [])[1] : undefined;
+
+// What was typed -> { due, dl } (dl true for a deadline), or { err }.
+function parseWhen(s, now = Date.now()) {
+  s = s.trim().toLowerCase();
+  if (!s) return { err: '' };
+  let m, mins;
+  if ((m = s.match(/^(\d+(?:[.,]\d+)?)\s*(?:h|hrs?|hours?)\s*(?:(\d+)\s*(?:m|mins?|minutes?)?)?$/))) mins = parseFloat(m[1].replace(',', '.')) * 60 + (+m[2] || 0);
+  else if ((m = s.match(/^(\d+)\s*(?:m|mins?|minutes?)?$/))) mins = +m[1];
+  if (mins !== undefined) return mins >= 1 && mins <= 1440 ? { due: now + Math.round(mins) * 6e4, dl: false } : { err: 'A timer can run from 1 minute to 24 hours' };
+
+  const base = new Date(now); base.setHours(0, 0, 0, 0);
+  let date = null, h = null, min = 0, wday, month, year, nums = [], words = [];
+  for (const t of s.replace(/,/g, ' ').replace(/\s+(am|pm)\b/g, '$1').split(/\s+/)) {
+    if ((m = t.match(/^(\d{1,2})(?:[:.](\d{2}))?(am|pm)?$/)) && (m[2] || m[3])) {
+      h = +m[1]; min = +(m[2] || 0);
+      if (m[3]) { if (h < 1 || h > 12) return { err: 'Not a time' }; h = h % 12 + (m[3] === 'pm' ? 12 : 0) }
+    } else if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { year = +m[1]; month = m[2] - 1; nums.unshift(+m[3]) }
+    else if ((m = t.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2}|\d{4}))?$/))) {
+      let [d, mo] = MDY ? [+m[2], +m[1]] : [+m[1], +m[2]];
+      if (mo > 12 && d <= 12) [d, mo] = [mo, d]; // only one way round makes sense
+      month = mo - 1; nums.unshift(d);
+      if (m[3]) year = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    } else if (/^\d{1,2}$/.test(t)) nums.push(+t);
+    else if (/^20\d\d$/.test(t)) year = +t;
+    else if (NAMES.today.includes(t) || (t.length >= 3 && NAMES.today.some(n => n.startsWith(t)))) date = new Date(base);
+    else if (NAMES.tomorrow.includes(t) || (t.length >= 3 && NAMES.tomorrow.some(n => n.startsWith(t)))) { date = new Date(base); date.setDate(date.getDate() + 1) }
+    else if (!['at', 'on', 'by', 'om', 'op', '@'].includes(t)) words.push(t); // "fri at 5pm"
+  }
+  for (const t of words) { // a name: a month if there's a day number, else a weekday
+    const w = named(NAMES.wd, t, 2), mo = named(NAMES.mo, t, 3);
+    if (mo !== undefined && (w === undefined || nums.length)) month = mo;
+    else if (w !== undefined) wday = w;
+    else return { err: '' };
+  }
+  if (month !== undefined) {
+    if (!nums.length) return { err: 'Which day?' };
+    const day = nums.shift();
+    date = new Date(year ?? base.getFullYear(), month, day);
+    if (date.getMonth() !== month || date.getDate() !== day) return { err: 'Not a date' };
+  } else if (wday !== undefined) {
+    date = new Date(base); date.setDate(date.getDate() + (wday - date.getDay() + 7) % 7);
+  }
+  if (nums.length && h === null && date) h = nums.shift(); // "fri 9", "tomorrow 14"
+  if (nums.length || (h !== null && (h > 23 || min > 59))) return { err: h > 23 || min > 59 ? 'Not a time' : '' };
+  if (!date && h === null) return { err: '' };
+  const at = new Date(date || base); at.setHours(h ?? EOD, min, 0, 0);
+  if (at <= now) {
+    if (!date) at.setDate(at.getDate() + 1); // 9:00 when it's later than that: tomorrow
+    else if (wday !== undefined && month === undefined) at.setDate(at.getDate() + 7); // "fri" late on a Friday: next week
+    else if (month !== undefined && year === undefined) at.setFullYear(at.getFullYear() + 1);
+    else return { err: 'That has already passed' };
+  }
+  return { due: +at, dl: true };
+}
+
+// Labels: "1h 5m" left on a timer, "15:00" today, "Fri 17:00" this week, "14 Nov" later.
+function dur(ms) { const m = Math.max(1, Math.ceil(ms / 6e4)); return m < 60 ? `${m} min` : m < 2880 ? `${Math.floor(m / 60)}h` + (m % 60 ? ` ${m % 60}m` : '') : `${Math.round(m / 1440)} days` }
+function hm(d) { return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+function longDate(t) { return new Date(t).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
+function shortDate(t, now) {
+  const d = new Date(t), a = new Date(t), b = new Date(now);
+  a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+  const days = Math.round((a - b) / DAY);
+  if (!days) return hm(d);
+  if (Math.abs(days) < 7) return `${d.toLocaleDateString([], { weekday: 'short' })} ${hm(d)}`;
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.getFullYear() === b.getFullYear() ? undefined : 'numeric' });
+}
+function dueText(c, now = Date.now()) {
+  const due = +c.dataset.due;
+  if (!c.dataset.dl) return `Timer · ${dur(due - now)} left`;
+  return c.dataset.late ? `Overdue since ${longDate(due)}` : `${longDate(due)} · in ${dur(due - now)}`;
+}
+// The chip after a card's text, with the clock filled (tmr) or red (late).
+function chip(c, now = Date.now()) {
+  const due = +c.dataset.due, el = c.querySelector('.due');
+  c.classList.toggle('tmr', !!due);
+  c.classList.toggle('late', !!(due && c.dataset.late));
+  el.textContent = !due ? '' : c.dataset.dl ? shortDate(due, now) : dur(due - now).replace(' min', 'm');
+  el.title = due ? dueText(c, now) : '';
+}
+// Timer chips count down; deadlines change label at midnight.
+setInterval(() => {
+  if (document.hidden) return;
+  const now = Date.now();
+  for (const c of B.querySelectorAll('.card[data-due]')) chip(c, now);
+}, 30e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) for (const c of B.querySelectorAll('.card[data-due]')) chip(c) });
+function clearDue(c) { for (const k of ['due', 'dl', 'late', 'mins']) delete c.dataset[k] }
+
 function openTimer(card, anchor) {
   if (!card) return;
   tmCard = card;
   const due = +card.dataset.due;
-  TM.querySelector('.set').hidden = !!due; TM.querySelector('.run').hidden = !due;
-  if (due) tmLeft.textContent = `Ends ${new Date(due).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${left(due - Date.now())} left`;
-  else tmIn.value = lastMins;
+  TM.querySelector('.run').hidden = !due;
+  if (due) tmLeft.textContent = tmLeft.title = dueText(card);
+  tmIn.value = due ? '' : lastWhen;
+  hint();
   const tracked = elapsed(card);
   TM.querySelector('.trk').hidden = !tracked;
   document.getElementById('tmTrk').textContent = `Tracked ${fmt(tracked)}`;
@@ -903,15 +1038,30 @@ function openTimer(card, anchor) {
   const r = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : anchor, w = TM.offsetWidth, h = TM.offsetHeight;
   TM.style.left = Math.max(4, Math.min(r.right - w, innerWidth - w - 4)) + 'px';
   TM.style.top = (r.bottom + h + 8 < innerHeight ? r.bottom + 4 : Math.max(4, r.top - h - 4)) + 'px';
-  if (!due) { tmIn.focus(); tmIn.select(); }
+  tmIn.focus(); tmIn.select();
 }
+// Says what Set will do, before it's pressed.
+function when() {
+  const w = parseWhen(tmIn.value), col = tmCard && tmCard.closest('.col');
+  if (w.dl && col && isDone(col)) return { err: `Cards in ${col.querySelector('h2 span').textContent || 'the last column'} don't keep deadlines` };
+  return w;
+}
+function hint() {
+  const w = when();
+  tmHint.classList.toggle('bad', !w.due && !!tmIn.value.trim());
+  tmHint.textContent = w.due ? (w.dl ? `Deadline ${longDate(w.due)} · in ${dur(w.due - Date.now())}` : `Timer · ends ${hm(new Date(w.due))}`)
+    : !tmIn.value.trim() ? '' : w.err || 'Try 25, 1h30, 15:00, fri or 14/11';
+}
+tmIn.addEventListener('input', hint);
 function hideTimer() { TM.hidden = true; tmCard = null }
 function startTimer() {
-  const m = Math.round(+tmIn.value);
-  if (!tmCard || !(m >= 1 && m <= 1440)) return tmIn.focus();
-  lastMins = m;
+  const w = when();
+  if (!tmCard || !w.due) return tmIn.focus();
+  if (!w.dl) lastWhen = tmIn.value.trim(); // the field starts with the last timer
+  clearDue(tmCard);
   tmCard.dataset.id = tmCard.dataset.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  tmCard.dataset.due = Date.now() + m * 60e3; tmCard.dataset.mins = m;
+  tmCard.dataset.due = w.due;
+  if (w.dl) tmCard.dataset.dl = 1;
   hideTimer(); sync();
 }
 document.getElementById('tmGo').onclick = startTimer;
@@ -922,12 +1072,12 @@ document.getElementById('tmReset').onclick = () => {
   if (+tmCard.dataset.since) tmCard.dataset.since = Date.now();
   hideTimer(); sync();
 };
-document.getElementById('tmX').onclick = () => { if (tmCard) { delete tmCard.dataset.due; delete tmCard.dataset.mins } hideTimer(); sync(); };
+document.getElementById('tmX').onclick = () => { if (tmCard) clearDue(tmCard); hideTimer(); sync(); };
 addEventListener('pointerdown', e => { if (!TM.hidden && !TM.contains(e.target) && !e.target.closest('.ck')) hideTimer() }, true);
 addEventListener('keydown', e => { if (e.key === 'Escape' && !TM.hidden) hideTimer() });
-// Send the running timers to Rust whenever they change.
+// Send the waiting timers and deadlines to Rust whenever they change.
 function pushTimers() {
-  const list = [...B.querySelectorAll('.card[data-due]')].map(c => [c.dataset.id, +c.dataset.due, c.firstChild.textContent]);
+  const list = [...B.querySelectorAll('.card[data-due]:not([data-late])')].map(c => [c.dataset.id, +c.dataset.due, c.dataset.dl ? 'Deadline' : 'Timer done', c.firstChild.textContent]);
   const sig = JSON.stringify(list);
   if (sig === timerSig) return;
   timerSig = sig;
@@ -939,7 +1089,7 @@ function pushTimers() {
 function onTimer(id, notified) {
   const c = [...B.querySelectorAll('.card[data-due]')].find(c => c.dataset.id === id);
   if (!c) return;
-  delete c.dataset.due; delete c.dataset.mins;
+  if (c.dataset.dl) c.dataset.late = 1; else clearDue(c);
   c.classList.remove('ding'); c.offsetWidth; c.classList.add('ding');
   setTimeout(() => c.classList.remove('ding'), 5200);
   c.scrollIntoView({ block: 'nearest' });

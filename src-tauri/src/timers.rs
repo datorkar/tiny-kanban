@@ -1,4 +1,4 @@
-//! Card timers. One thread sleeps until the next timer is due (no CPU use in
+//! Card timers and deadlines. One thread sleeps until the next timer is due (no CPU use in
 //! between, and unaffected by the webview slowing timers in hidden windows),
 //! then shows an OS notification. If that can't be delivered, it restores the
 //! window and tells the page, which plays a ping and shows itself at full
@@ -11,8 +11,8 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
-/// (card id, due time in ms since the epoch, card text)
-type Timer = (String, u64, String);
+/// (card id, due time in ms since the epoch, notification title, card text)
+type Timer = (String, u64, String, String);
 
 #[derive(Default)]
 pub struct Timers {
@@ -32,7 +32,7 @@ fn now_ms() -> u64 {
 pub fn set_timers(app: AppHandle, state: State<'_, Timers>, list: Vec<Timer>) {
     {
         let fired = state.fired.lock().unwrap();
-        *state.list.lock().unwrap() = list.into_iter().filter(|(id, due, _)| !fired.contains(&(id.clone(), *due))).collect();
+        *state.list.lock().unwrap() = list.into_iter().filter(|(id, due, ..)| !fired.contains(&(id.clone(), *due))).collect();
     }
     let mut thread = state.thread.lock().unwrap();
     if let Some(t) = &*thread {
@@ -48,9 +48,9 @@ pub fn set_timers(app: AppHandle, state: State<'_, Timers>, list: Vec<Timer>) {
             *l = keep;
             due
         };
-        for (id, at, text) in due {
+        for (id, at, title, text) in due {
             fired.lock().unwrap().push((id.clone(), at));
-            let notified = notify(&app, &text);
+            let notified = notify(&app, &title, &text);
             if !notified {
                 if let Some(w) = app.get_webview_window("main") {
                     let _ = w.unminimize();
@@ -70,9 +70,9 @@ pub fn set_timers(app: AppHandle, state: State<'_, Timers>, list: Vec<Timer>) {
 }
 
 /// Shows the OS notification; false if it couldn't be delivered.
-fn notify(app: &AppHandle, text: &str) -> bool {
+fn notify(app: &AppHandle, title: &str, text: &str) -> bool {
     let mut n = notify_rust::Notification::new();
-    n.summary("Timer done").body(text).auto_icon();
+    n.summary(title).body(text).auto_icon();
     #[cfg(windows)]
     {
         // Attribute the toast to the installed app (the installer registers this
