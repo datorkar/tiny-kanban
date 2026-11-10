@@ -27,10 +27,22 @@ GitHub Actions builds Linux (`.deb`, `.rpm`), Windows (`.msi`, `.exe`) and macOS
 
 1. Bump `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`.
 2. Either push a `v<version>` tag, or go to **Actions → Build → Run workflow** on `main` and tick
-   **Publish a GitHub Release**. That tags `v<version>` itself.
+   **Publish a GitHub Release**. That tags `v<version>` itself. Releases are only published from `main` or a `v*`
+   tag; ticking the box on another branch builds without releasing.
 
 The release includes `latest.json`, which installed apps read to find updates. Each install type updates with its
 own installer: `.exe` or `.msi` on Windows, the app on macOS, `.deb` on Linux. `.rpm` installs don't auto-update.
+
+## CI security
+
+- **Permissions:** jobs get a read-only token by default. Only the release job can write (to create the tag and
+  release) and sign build provenance.
+- **Pinned Actions:** every third-party Action is pinned to an exact commit, with its version in a comment.
+  Dependabot (`.github/dependabot.yml`) proposes updates: weekly for Actions, monthly for Rust and npm.
+- **Locked builds:** builds use the lock files exactly (`npm ci`, `cargo build --locked`), and checkouts don't keep
+  the GitHub token around.
+- **Release extras:** each release gets an SPDX SBOM and a build provenance attestation; see [docs/it.md](it.md).
+- **Security audit:** a weekly workflow (`audit.yml`) runs `cargo audit` against the RustSec advisory database.
 
 ## Update signing
 

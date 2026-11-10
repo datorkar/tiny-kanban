@@ -12,6 +12,7 @@ tauri-plugin-updater = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
 notify-rust = "4" # card timer notifications; reports failure, so the app can fall back
 serde_json = "1"
 
@@ -20,7 +21,7 @@ webkit2gtk = "2.0"
 
 # Efficiency mode while unfocused (versions match what wry/tauri already use)
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Registry"] }
 webview2-com = "0.39"
 
 [target.'cfg(target_os = "macos")'.dependencies]

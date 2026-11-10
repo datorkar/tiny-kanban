@@ -58,7 +58,8 @@ Download the latest version from [**Releases**](https://github.com/datorkar/tiny
 
 The installers aren't OS code-signed. On macOS, right-click the app and choose **Open** the first time. On
 Windows, choose **More info → Run anyway**. For other Linux distros and Wayland notes, see
-[docs/linux.md](docs/linux.md).
+[docs/linux.md](docs/linux.md). Deploying it at work? See [docs/it.md](docs/it.md) for silent installs, turning off
+self-updates, and what the app does on the machine.
 
 Your board is saved in `board.json`:
 - Linux: `~/.local/share/app.tinykanban/`

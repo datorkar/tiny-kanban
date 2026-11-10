@@ -12,8 +12,9 @@ on:
         type: boolean
         default: false
 
+# Least privilege: jobs can only read the repo; the release job asks for more.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -35,7 +36,9 @@ jobs:
             out: src-tauri/target/universal-apple-darwin/release/bundle
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -43,16 +46,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
 
@@ -71,9 +75,10 @@ jobs:
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set; building without update signatures"
             extra=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
           fi
-          npx tauri build ${{ matrix.args }} "${extra[@]}"
+          # --locked: build exactly what Cargo.lock says (npm ci does the same for npm)
+          npx tauri build ${{ matrix.args }} "${extra[@]}" -- --locked
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tiny-kanban-${{ matrix.name }}
           path: |
@@ -87,11 +92,19 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v') || inputs.release
+    # Only a v* tag, or "Run workflow" with release ticked on main, publishes.
+    if: startsWith(github.ref, 'refs/tags/v') || (inputs.release && github.ref == 'refs/heads/main')
     needs: build
     runs-on: ubuntu-latest
+    concurrency: release
+    permissions:
+      contents: write     # create the tag and release
+      id-token: write     # sign the build provenance
+      attestations: write # store it
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Work out tag
         id: tag
@@ -102,7 +115,7 @@ jobs:
             echo "name=v$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
           merge-multiple: true
@@ -123,7 +136,23 @@ jobs:
           find dist -type f ! -name '*.sig' -exec mv {} out/ \;
           mv latest.json out/
 
-      - uses: softprops/action-gh-release@v2
+      # Software bill of materials: every Rust and npm dependency, from the lock files.
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: out/tiny-kanban-${{ steps.tag.outputs.name }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
+      # Signed statement that these files were built by this workflow from this
+      # commit. Verify with: gh attestation verify <file> -R datorkar/tiny-kanban
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: out/*
+
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           name: Tiny Kanban ${{ steps.tag.outputs.name }}

@@ -34,7 +34,9 @@ fn apply(window: &WebviewWindow, low: bool) {
         PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE, PROCESS_SET_INFORMATION,
     };
 
-    // This process and its descendants (WebView2 browser, renderer, GPU, ...).
+    // This process and the WebView2 processes under it (browser, renderer, ...).
+    // Only msedgewebview2.exe: anything else the app starts (e.g. a browser
+    // opened from a card link) keeps its normal priority.
     let pids = unsafe {
         let mut pids = vec![GetCurrentProcessId()];
         if let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
@@ -42,7 +44,9 @@ fn apply(window: &WebviewWindow, low: bool) {
             let mut e = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
             if Process32FirstW(snap, &mut e).is_ok() {
                 loop {
-                    all.push((e.th32ProcessID, e.th32ParentProcessID));
+                    let n = e.szExeFile.iter().position(|&c| c == 0).unwrap_or(e.szExeFile.len());
+                    let wv2 = String::from_utf16_lossy(&e.szExeFile[..n]).eq_ignore_ascii_case("msedgewebview2.exe");
+                    all.push((e.th32ProcessID, e.th32ParentProcessID, wv2));
                     if Process32NextW(snap, &mut e).is_err() {
                         break;
                     }
@@ -52,8 +56,8 @@ fn apply(window: &WebviewWindow, low: bool) {
             let mut i = 0;
             while i < pids.len() {
                 let parent = pids[i];
-                for &(pid, ppid) in &all {
-                    if ppid == parent && pid != 0 && !pids.contains(&pid) {
+                for &(pid, ppid, wv2) in &all {
+                    if wv2 && ppid == parent && pid != 0 && !pids.contains(&pid) {
                         pids.push(pid);
                     }
                 }

@@ -209,6 +209,7 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div class="note err" id="kErr" hidden></div>
 <h3>Startup</h3>
 <label class="chk"><input type="checkbox" id="auto"> Launch at login</label>
+<div class="note" id="managed" hidden>Updates are managed by your organisation.</div>
 </div>
 <h3>Archive <span id="arN"></span></h3>
 <div class="arw"><div id="arl"></div><div class="sb" hidden></div></div>
@@ -1046,7 +1047,10 @@ up.onclick = async () => {
   try { await invoke('install_update') }
   catch (e) { up.textContent = 'Update failed'; up.title = String(e); up.disabled = false; }
 };
-if (invoke) { setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 6 * 3600e3); }
+if (invoke) {
+  setTimeout(checkUpdate, 3000); setInterval(checkUpdate, 6 * 3600e3);
+  invoke('updates_disabled').then(off => { document.getElementById('managed').hidden = !off });
+}
 
 // Load
 (async () => {
