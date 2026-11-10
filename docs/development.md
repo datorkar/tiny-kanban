@@ -46,10 +46,11 @@ own installer: `.exe` or `.msi` on Windows, the app on macOS, `.deb` on Linux. `
 
 ## Update signing
 
-Updates are signed, and the app only installs updates signed with the project's key. CI needs the private key in
-a repository secret named **`TAURI_SIGNING_PRIVATE_KEY`** (Settings → Secrets and variables → Actions). If the key
-has a password, also add **`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`**. Without the secret, CI still builds installers,
-but a release run fails rather than publish a release that can't auto-update. The public key is in
+Updates are signed, and the app only installs updates signed with the project's key. The private key is a secret
+named **`TAURI_SIGNING_PRIVATE_KEY`** in the protected **`release` environment** (Settings → Environments → release),
+which only release runs from `main` or a `v*` tag can use. If the key has a password, also add
+**`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`** there. Ordinary builds don't get the key and build without update
+signatures; a release run without it fails rather than publish a release that can't auto-update. The public key is in
 `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
 
 The installers themselves aren't OS code-signed (no Apple or Windows certificate).
