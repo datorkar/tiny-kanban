@@ -1,6 +1,6 @@
 # Tiny Kanban
 
-<p align="center"><img src="docs/screenshots/board-light.png" alt="Tiny Kanban board in light mode" width="760"></p>
+<p align="center"><img src="docs/screenshots/board-dark.png" alt="Tiny Kanban board in dark mode" width="560"></p>
 
 A tiny, fast desktop kanban board for Windows, macOS and Linux. One sentence per card, drag between columns,
 nothing else in the way. Installers are about 2 MB, because it uses your OS's own web engine instead of bundling a
@@ -21,8 +21,8 @@ browser.
 
 | | |
 |:-:|:-:|
-| <img src="docs/screenshots/board-dark.png" alt="Dark mode with terracotta accent"> | <img src="docs/screenshots/mini-mode.png" alt="Mini mode with a card popped out"> |
-| Dark mode, terracotta accent | Mini mode: hover a card to read it full size |
+| <img src="docs/screenshots/board-light.png" alt="Light mode with timers and deadlines"> | <img src="docs/screenshots/mini-mode.png" alt="Mini mode with a card popped out"> |
+| Light mode, with a timer, a deadline and an overdue card | Mini mode: hover a card to read it full size |
 | <img src="docs/screenshots/settings.png" alt="Settings panel"> | <img src="docs/screenshots/overlay.png" alt="Locked see-through board over a code editor"> |
 | Settings: columns, colours, shortcuts, archive | Locked at 70% opacity over an editor; clicks go through |
 

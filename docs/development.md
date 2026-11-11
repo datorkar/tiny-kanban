@@ -26,7 +26,8 @@ GitHub Actions builds Linux (`.deb`, `.rpm`), Windows (`.msi`, `.exe`) and macOS
 ## Releasing
 
 1. Bump `version` in `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `package.json`.
-2. Either push a `v<version>` tag, or go to **Actions → Build → Run workflow** on `main` and tick
+2. Run `npm run screenshots` to refresh `docs/screenshots` (needs Playwright with Chromium), and commit them.
+3. Either push a `v<version>` tag, or go to **Actions → Build → Run workflow** on `main` and tick
    **Publish a GitHub Release**. That tags `v<version>` itself. Releases are only published from `main` or a `v*`
    tag; ticking the box on another branch builds without releasing.
 
