@@ -5,18 +5,18 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
 
 const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, 'docs/screenshots');
-const MIN = 60e3, now = Date.now();
+const MIN = 60e3, now = Date.now(), H = Math.floor(now / 3600e3) * 3600e3; // deadlines on the hour
 
 // Demo boards. Times are relative to now so the chips always read the same.
 const short = [
-  { name: 'To do', cards: [{ t: 'Plan the week' }, { t: 'Water plants' }, { t: 'Pay rent', id: 'd1', due: now + 2 * 24 * 60 * MIN, dl: 1 }] },
+  { name: 'To do', cards: [{ t: 'Plan the week' }, { t: 'Water plants' }, { t: 'Pay rent', id: 'd1', due: H + 2 * 24 * 60 * MIN, dl: 1 }] },
   { name: 'Doing', track: true, cards: [{ t: 'Write README', id: 't1', due: now + 18 * MIN, ms: 42 * MIN, since: now }, { t: 'Fix the bug', ms: 75 * MIN, since: now }] },
   { name: 'Done', cards: [{ t: 'Ship v0.3', ms: 3 * 60 * MIN }, { t: 'Book flights', ms: 20 * MIN }] },
 ];
 const long = [
-  { name: 'To do', cards: [{ t: 'Reply to that email from 2019' }, { t: 'Water the cactus (it looks judgemental)' }, { t: 'Figure out what this button does', id: 'd1', due: now - 3 * 60 * MIN, dl: 1, late: 1 }, { t: 'Rename final_FINAL_v3_really.docx' }] },
-  { name: 'Doing', track: true, cards: [{ t: 'Untangle the headphone cables', id: 't1', due: now + 25 * MIN, ms: 12 * MIN, since: now }, { t: 'Pretend to understand the regex', id: 'd2', due: now + 3 * 24 * 60 * MIN, dl: 1, ms: 50 * MIN, since: now }] },
-  { name: 'Done', cards: [{ t: 'Turn it off and on again', ms: 5 * MIN }, { t: 'Find the other sock', ms: 40 * MIN }, { t: 'Build a kanban app to track building a kanban app', ms: 9 * 60 * MIN }] },
+  { name: 'To do', cards: [{ t: 'Plan the week' }, { t: 'Water plants' }, { t: 'Call the bank', id: 'd1', due: H - 3 * 60 * MIN, dl: 1, late: 1 }, { t: 'Pay rent', id: 'd2', due: H + 2 * 24 * 60 * MIN, dl: 1 }] },
+  { name: 'Doing', track: true, cards: [{ t: 'Write README', id: 't1', due: now + 25 * MIN, ms: 12 * MIN, since: now }, { t: 'Fix the bug', ms: 50 * MIN, since: now }] },
+  { name: 'Done', cards: [{ t: 'Ship v0.3', ms: 3 * 60 * MIN }, { t: 'Book flights', ms: 40 * MIN }, { t: 'Tidy desk', ms: 5 * MIN }] },
 ];
 
 const frameCss = `html,body{margin:0;background:#f4f4f5}
@@ -28,7 +28,7 @@ const editor = `<!doctype html><meta charset=utf-8><style>${frameCss}
 .e{position:relative;display:flex;width:1000px;height:550px;background:#1e1f24;font:15px/1.65 ui-monospace,Menlo,Consolas,monospace;color:#d4d4d8}
 .side{width:200px;background:#18191d;padding:14px 18px;font:15px/2.1 system-ui,sans-serif;color:#a1a1aa}.side b{color:#e4e4e7;font-weight:500}
 pre{margin:0;padding:18px 24px;white-space:pre}.c{color:#6b7280;font-style:italic}.k{color:#c084fc}.f2{color:#60a5fa}.s{color:#a3e635}.n{color:#fb923c}
-iframe{position:absolute;right:16px;bottom:16px}</style>
+iframe{position:absolute;right:16px;bottom:16px;opacity:.7}</style>
 <div class="f"><div class="e"><div class="side"><b>tiny-kanban</b><br>▸ src<br>&nbsp; index.html<br>▸ src-tauri<br>&nbsp; main.rs<br>README.md</div>
 <pre><span class="c">// Make the lock button the only clickable part of the window.</span>
 <span class="k">fn</span> <span class="f2">passthrough</span>(window: WebviewWindow, keep: Option&lt;[f64; <span class="n">4</span>]&gt;) -&gt; bool {
@@ -57,7 +57,7 @@ const shots = [
   { file: 'board-light.png', w: 760, h: 420, data: { theme: 'light', cols: long } },
   { file: 'mini-mode.png', w: 360, h: 230, data: { theme: 'light', mini: true, cols: long }, hover: true },
   { file: 'settings.png', w: 560, h: 600, data: { theme: 'light', cols: long }, click: '#cg' },
-  { file: 'overlay.png', html: editor, data: { theme: 'dark', mini: true, locked: true, opacity: 70, accent: '#4f6ef7', cols: long } },
+  { file: 'overlay.png', html: editor, data: { theme: 'dark', mini: true, locked: true, accent: '#4f6ef7', cols: long } },
 ];
 
 const server = http.createServer((req, res) => {
