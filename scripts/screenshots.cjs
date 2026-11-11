@@ -1,5 +1,5 @@
 // Regenerates the README screenshots in docs/screenshots from src/index.html.
-// Run before each release:  npm run screenshots
+// Run before each release:  node scripts/screenshots.cjs
 // Needs Playwright with Chromium (npm i -g playwright && npx playwright install chromium).
 const http = require('http'), fs = require('fs'), path = require('path');
 const { chromium } = require('playwright');
@@ -18,6 +18,9 @@ const long = [
   { name: 'Doing', track: true, cards: [{ t: 'Write README', id: 't1', due: now + 25 * MIN, ms: 12 * MIN, since: now }, { t: 'Fix the bug', ms: 50 * MIN, since: now }] },
   { name: 'Done', cards: [{ t: 'Ship v0.3', ms: 3 * 60 * MIN }, { t: 'Book flights', ms: 40 * MIN }, { t: 'Tidy desk', ms: 5 * MIN }] },
 ];
+
+// Every card: 2 to 5 words.
+for (const c of [...short, ...long].flatMap(c => c.cards)) { const n = c.t.split(/\s+/).length; if (n < 2 || n > 5) throw new Error('2-5 words per card: ' + c.t) }
 
 const frameCss = `html,body{margin:0;background:#f4f4f5}
 .f{display:inline-block;margin:14px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px #0002,0 4px 14px #0003}
@@ -55,7 +58,7 @@ iframe{position:absolute;right:16px;bottom:16px;opacity:.7}</style>
 const shots = [
   { file: 'board-dark.png', w: 560, h: 290, data: { theme: 'dark', cols: short } },
   { file: 'board-light.png', w: 760, h: 420, data: { theme: 'light', cols: long } },
-  { file: 'mini-mode.png', w: 360, h: 230, data: { theme: 'light', mini: true, cols: long }, hover: true },
+  { file: 'mini-mode.png', w: 300, h: 175, data: { theme: 'light', mini: true, cols: long }, hover: true },
   { file: 'settings.png', w: 560, h: 600, data: { theme: 'light', cols: long }, click: '#cg' },
   { file: 'overlay.png', html: editor, data: { theme: 'dark', mini: true, locked: true, accent: '#4f6ef7', cols: long } },
 ];
