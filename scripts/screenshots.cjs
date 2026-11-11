@@ -61,14 +61,14 @@ iframe{position:absolute;right:16px;bottom:16px}</style>
     tauri::Builder::<span class="f2">default</span>()
         .<span class="f2">run</span>(tauri::<span class="f2">generate_context!</span>())
         .<span class="f2">expect</span>(<span class="s">"failed to run tiny-kanban"</span>);
-}</pre><iframe src="/index.html" width="480" height="220"></iframe></div></div>`;
+}</pre><iframe src="/index.html" width="360" height="220"></iframe></div></div>`;
 
 const shots = [
   { file: 'board-dark.png', w: 560, h: 290, data: { theme: 'dark', cols: short } },
   { file: 'board-light.png', w: 760, h: 420, data: { theme: 'light', cols: long } },
   { file: 'mini-mode.png', w: 230, h: 140, pad: 44, desk: true, data: { theme: 'light', mini: true, cols: tiny }, hover: true },
   { file: 'settings.png', w: 560, h: 600, data: { theme: 'light', cols: long }, click: '#cg' },
-  { file: 'overlay.png', html: editor, data: { theme: 'dark', mini: true, locked: true, opacity: 80, accent: '#4f6ef7', cols: long } },
+  { file: 'overlay.png', html: editor, data: { theme: 'dark', mini: true, locked: true, opacity: 70, accent: '#4f6ef7', cols: long } },
 ];
 
 const server = http.createServer((req, res) => {
