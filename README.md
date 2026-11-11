@@ -18,7 +18,7 @@ browser.
   cloud: your board is a JSON file on your computer.
 
 ## Screenshots
-
+| | |
 |:-:|:-:|
 | <img src="docs/screenshots/board-light.png" alt="Light mode with timers and deadlines"> | <img src="docs/screenshots/mini-mode.png" alt="Mini mode with a card popped out"> |
 | Light mode, with a timer, a deadline and an overdue card | Mini mode: hover a card to read it full size |
