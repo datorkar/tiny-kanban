@@ -4,7 +4,8 @@
   "version": "0.3.7",
   "scripts": {
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "screenshots": "node scripts/screenshots.cjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
