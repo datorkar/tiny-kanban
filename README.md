@@ -22,7 +22,7 @@ browser.
 | | |
 |:-:|:-:|
 | <img src="docs/screenshots/board-light.png" alt="Light mode with timers and deadlines"> | <img src="docs/screenshots/mini-mode.png" alt="Mini mode with a card popped out"> |
-| Dark mode, terracotta accent | Mini mode: hover a card to read it full size |
+| Light mode, with a timer, a deadline and an overdue card | Mini mode: hover a card to read it full size |
 | <img src="docs/screenshots/settings.png" alt="Settings panel"> | <img src="docs/screenshots/overlay.png" alt="Locked see-through board over a code editor"> |
 | Settings: columns, colours, shortcuts, archive | Locked at 70% opacity over an editor; clicks go through |
 
