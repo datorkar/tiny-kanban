@@ -35,7 +35,7 @@ browser.
   and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the last change (<kbd>⌘</kbd> on Mac).
 - **Columns:** rename, add, remove, drag to reorder, and choose which columns track time.
 - **Timers and deadlines:** click a card's clock (or the faint one that appears on hover) and type when: `25` or
-  `1h30` starts a timer; `15:00`, `3pm`, `fri`, `tomorrow 9`, `14/11` or `14 nov 17:00` sets a deadline (day names work
+  `1h30` starts a timer; `15:00`, `1700`, `3pm`, `fri`, `tomorrow 9`, `14/11` or `14 nov 17:00` sets a deadline (day names work
   in English and your system language). The card shows the time left or the deadline next to its clock. When it's up
   you get an OS notification, or, where notifications aren't available, a soft ping and the window at full opacity
   for a few seconds. Timers then clear; a passed deadline stays red until you clear it or the card reaches the last
