@@ -7,7 +7,7 @@ Facts and settings for deploying Tiny Kanban on managed machines.
 | | |
 |---|---|
 | **Network** | Only GitHub: an update check at start and every 6 hours (`github.com/datorkar/tiny-kanban/releases/latest/download/latest.json`), and the update download. No telemetry, account or cloud. With updates turned off (below), it makes no network requests. Web links in cards open in the user's browser. |
-| **Data** | The board is plain JSON in the user's profile: `%APPDATA%\app.tinykanban\board.json` (Windows, roams with the profile), `~/Library/Application Support/app.tinykanban/` (macOS), `~/.local/share/app.tinykanban/` (Linux). A daily `board.json.bak` sits next to it. WebView2's cache is in `%LOCALAPPDATA%\app.tinykanban\EBWebView`. |
+| **Data** | The board is plain JSON in the user's profile: `%APPDATA%\app.tinykanban\board.json` (Windows, roams with the profile), `~/Library/Application Support/app.tinykanban/` (macOS), `~/.local/share/app.tinykanban/` (Linux). Other boards are in a `boards` folder beside it. Each board file gets a daily `.bak` copy next to it. WebView2's cache is in `%LOCALAPPDATA%\app.tinykanban\EBWebView`. |
 | **Privileges** | Runs as the user; nothing needs admin. The `.msi` installs per machine, the `.exe` per user. |
 | **Startup** | Only if the user ticks *Launch at login*: an entry in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` (Windows), a LaunchAgent (macOS) or `~/.config/autostart` (Linux). |
 | **Keyboard** | Two system-wide shortcuts (default Ctrl+Alt+L / Ctrl+Alt+M) via the standard hotkey API (`RegisterHotKey`), not keyboard hooks. Users can change or turn them off in settings. |

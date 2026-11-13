@@ -19,28 +19,87 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_window_state::StateFlags;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-fn board_path(app: &AppHandle) -> Result<PathBuf, String> {
+fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.join("board.json"))
+    Ok(dir)
+}
+
+/// A board name is also its file name, so keep it to something every file
+/// system accepts and that can't point outside the boards folder.
+fn valid_name(name: &str) -> bool {
+    let n = name.trim();
+    !n.is_empty()
+        && n == name
+        && n.chars().count() <= 40
+        && !n.starts_with('.')
+        && !n.chars().any(|c| c.is_control() || r#"/\:*?"<>|"#.contains(c))
+}
+
+/// The main board is board.json, as before; other boards are boards/<name>.json.
+fn board_path(app: &AppHandle, board: &str) -> Result<PathBuf, String> {
+    let dir = data_dir(app)?;
+    if board.is_empty() {
+        return Ok(dir.join("board.json"));
+    }
+    if !valid_name(board) {
+        return Err("Not a valid board name".into());
+    }
+    let dir = dir.join("boards");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(format!("{board}.json")))
 }
 
 fn is_json(text: &str) -> bool {
     serde_json::from_str::<serde_json::Value>(text).is_ok()
 }
 
-/// Loads the board. A damaged file (cut short by a power cut, or edited by
-/// hand) is never overwritten: it's kept as board.json.corrupt-<unix time> and
-/// the daily backup is used instead, if there is one. A good file is copied to
-/// board.json.bak at most once a day.
+/// The other boards: every .json file in the boards folder, sorted by name.
 #[tauri::command]
-fn load(app: AppHandle) -> String {
-    let Ok(path) = board_path(&app) else { return String::new() };
-    let Ok(text) = fs::read_to_string(&path) else { return String::new() };
+fn boards(app: AppHandle) -> Vec<String> {
+    let Ok(dir) = data_dir(&app) else { return vec![] };
+    let mut names: Vec<String> = fs::read_dir(dir.join("boards"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| e.file_name().to_str()?.strip_suffix(".json").map(str::to_owned))
+        .filter(|n| valid_name(n))
+        .collect();
+    names.sort_by_key(|n| n.to_lowercase());
+    names
+}
+
+/// Loads a board and returns [name, json]. Without a name it opens the board
+/// that was open last (the main board if that file is gone); with one, that
+/// board becomes the one to open next time. A damaged file (cut short by a
+/// power cut, or edited by hand) is never overwritten: it's kept as
+/// <file>.corrupt-<unix time> and the daily backup is used instead, if there
+/// is one. A good file is copied to <file>.bak at most once a day.
+#[tauri::command]
+fn load(app: AppHandle, board: Option<String>) -> (String, String) {
+    let Ok(dir) = data_dir(&app) else { return Default::default() };
+    let last = dir.join("last-board");
+    let board = match board {
+        Some(b) => {
+            let _ = fs::write(&last, &b);
+            b
+        }
+        None => fs::read_to_string(&last)
+            .ok()
+            .filter(|b| board_path(&app, b).is_ok_and(|p| p.exists()))
+            .unwrap_or_default(),
+    };
+    let text = board_path(&app, &board).map(|p| read_board(&p)).unwrap_or_default();
+    (board, text)
+}
+
+fn read_board(path: &PathBuf) -> String {
+    let Ok(text) = fs::read_to_string(path) else { return String::new() };
     let backup = path.with_extension("json.bak");
     if !is_json(&text) {
         let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-        let _ = fs::rename(&path, path.with_file_name(format!("board.json.corrupt-{secs}")));
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let _ = fs::rename(path, path.with_file_name(format!("{name}.corrupt-{secs}")));
         return fs::read_to_string(&backup).ok().filter(|b| is_json(b)).unwrap_or_default();
     }
     let stale = fs::metadata(&backup)
@@ -48,7 +107,7 @@ fn load(app: AppHandle) -> String {
         .map(|t| t.elapsed().map_or(true, |age| age > Duration::from_secs(24 * 3600)))
         .unwrap_or(true);
     if stale {
-        let _ = fs::copy(&path, &backup);
+        let _ = fs::copy(path, &backup);
     }
     text
 }
@@ -56,9 +115,9 @@ fn load(app: AppHandle) -> String {
 /// Writes atomically: to a temporary file, flushed to disk, then renamed over
 /// the board, so a crash or power cut leaves either the old or the new board.
 #[tauri::command]
-fn save(app: AppHandle, data: String) -> Result<(), String> {
+fn save(app: AppHandle, data: String, board: Option<String>) -> Result<(), String> {
     use std::io::Write;
-    let path = board_path(&app)?;
+    let path = board_path(&app, board.as_deref().unwrap_or(""))?;
     let tmp = path.with_extension("tmp");
     let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
     f.write_all(data.as_bytes()).and_then(|_| f.sync_all()).map_err(|e| e.to_string())?;
@@ -402,6 +461,7 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            boards,
             load,
             save,
             check_update,

@@ -45,6 +45,7 @@ browser.
   <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse and gives it keyboard focus (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).
   Both can be changed in settings.
 - **Looks:** system/light/dark theme and four accent colours. No title bar, just a thin strip to drag.
+- **Boards:** pick a board, or make a new one, at the top of settings. One is open at a time.
 - **Remembers everything:** board, settings, and window position and size. It can launch at login.
 - **Updates itself** from GitHub Releases (signed); an **Update** button appears when there's a new version.
 
@@ -64,7 +65,7 @@ Windows, choose **More info → Run anyway**. For other Linux distros and Waylan
 [docs/linux.md](docs/linux.md). Deploying it at work? See [docs/it.md](docs/it.md) for silent installs, turning off
 self-updates, and what the app does on the machine.
 
-Your board is saved in `board.json`:
+Your main board is saved in `board.json`, and other boards in `boards/<name>.json` next to it:
 - Linux: `~/.local/share/app.tinykanban/`
 - macOS: `~/Library/Application Support/app.tinykanban/`
 - Windows: `%APPDATA%\app.tinykanban\`

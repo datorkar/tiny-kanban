@@ -49,6 +49,9 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 #st .cr{display:flex;align-items:center;gap:2px;margin-bottom:4px}
 #st .cr input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
 #st .cr input:focus{border-color:var(--acc)}
+#st select,#bdIn{width:100%;box-sizing:border-box;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 4px;outline:none}
+#st select:focus,#bdIn:focus{border-color:var(--acc)}
+#bdIn{margin-top:4px;padding:3px 6px}
 #st button{border:0;background:none;color:var(--mute);font:inherit;border-radius:4px;cursor:pointer;height:24px}
 #st button:hover:not(:disabled){background:#8883;color:var(--fg)}
 #st button:disabled{opacity:.3;cursor:default}
@@ -194,6 +197,9 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 </div>
 <div id="fl" hidden><input id="flIn" placeholder="Filter cards…" spellcheck="false" aria-label="Filter cards"><span id="flN"></span></div>
 <div id="st" hidden><div class="sb" hidden></div>
+<h3>Board</h3>
+<select id="bdSel" aria-label="Board"></select>
+<input id="bdIn" placeholder="Name, then Enter" aria-label="New board name" spellcheck="false" autocomplete="off" maxlength="40" hidden>
 <h3>Opacity</h3>
 <div class="op"><input id="opIn" type="range" min="30" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
 <h3>Columns</h3>
@@ -244,9 +250,27 @@ document.getElementById('cl').onclick = async () => {
 
 if (win) win.onCloseRequested(async () => { clearTimeout(timer); await save(); });
 
+// Boards: the main one ('') and any number of named ones, one open at a time.
+// The board settings (theme, opacity and so on) are saved into whichever is open.
+let board = '';
+const lsKey = b => b ? 'kanban:' + b : 'kanban';
 function persist(json) {
-  if (invoke) return invoke('save', { data: json });
-  else try { localStorage.setItem('kanban', json) } catch (_) {}
+  if (invoke) return invoke('save', { data: json, board });
+  else try { localStorage.setItem(lsKey(board), json) } catch (_) {}
+}
+// Without a name: the board that was open last.
+async function loadBoard(name) {
+  if (invoke) { const [b, text] = await invoke('load', name === undefined ? {} : { board: name }); board = b; return text }
+  try {
+    if (name === undefined) { name = localStorage.getItem('kanban-board') || ''; if (localStorage.getItem(lsKey(name)) === null) name = '' }
+    else localStorage.setItem('kanban-board', name);
+    board = name;
+    return localStorage.getItem(lsKey(name)) || '';
+  } catch (_) { board = name || ''; return '' }
+}
+async function listBoards() {
+  if (invoke) return invoke('boards');
+  try { return Object.keys(localStorage).filter(k => k.startsWith('kanban:')).map(k => k.slice(7)).sort((a, b) => a.localeCompare(b)) } catch (_) { return [] }
 }
 
 // The DOM is the model: read it back, update counts, save (debounced).
@@ -712,8 +736,42 @@ function renderSettings() {
     };
     stc.append(r);
   });
-  paintTheme(); paintAccent(); paintKeys(); renderArchive();
+  paintTheme(); paintAccent(); paintKeys(); renderArchive(); renderBoards();
   if (invoke) invoke('autostart', {}).then(v => { auto.checked = v }, () => { auto.disabled = true });
+}
+
+// Board picker: the main board, the named ones, and "New board…".
+const bdSel = document.getElementById('bdSel'), bdIn = document.getElementById('bdIn');
+async function renderBoards() {
+  const names = await listBoards();
+  if (board && !names.includes(board)) names.push(board); // new and not saved yet
+  bdSel.replaceChildren(...['', ...names].map(n => new Option(n || 'Main', n)), new Option('New board…', '\n'));
+  bdSel.value = board;
+}
+bdSel.onchange = () => {
+  if (bdSel.value !== '\n') return openBoard(bdSel.value);
+  bdIn.hidden = false; bdIn.value = ''; bdIn.focus();
+};
+bdIn.onkeydown = e => {
+  e.stopPropagation();
+  if (e.key === 'Escape') bdIn.blur();
+  if (e.key !== 'Enter') return;
+  // the name is also the file name
+  const name = bdIn.value.replace(/[\/\\:*?"<>|\x00-\x1f]/g, '').replace(/^[.\s]+/, '').trim().slice(0, 40);
+  if (!name) return;
+  bdIn.hidden = true; openBoard(name);
+};
+bdIn.onblur = () => { if (!bdIn.hidden) { bdIn.hidden = true; bdSel.value = board } };
+async function openBoard(name) {
+  if (timer) { clearTimeout(timer); await save(); }
+  let data = null;
+  try { data = JSON.parse(await loadBoard(name) || 'null') } catch (_) {}
+  hideZoom(); hideTimer(); select(null);
+  B.replaceChildren();
+  archive = data && Array.isArray(data.archive) ? data.archive : [];
+  undos = []; lastBoard = null; // undo doesn't cross boards
+  build(data);
+  if (!st.hidden) renderSettings();
 }
 
 // Column order: drag a row's ⠿ handle; the board's columns follow on drop.
@@ -1210,7 +1268,7 @@ if (invoke) {
 // Load
 (async () => {
   let raw = '';
-  try { raw = invoke ? await invoke('load') : localStorage.getItem('kanban') || '' } catch (_) {}
+  try { raw = await loadBoard() } catch (_) {}
   let data = null;
   try { data = raw && JSON.parse(raw) } catch (_) {}
   if (data && data.mini) document.body.classList.add('mini');
