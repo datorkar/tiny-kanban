@@ -45,7 +45,7 @@ browser.
   <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd> brings the window to the mouse and gives it keyboard focus (<kbd>⌘</kbd><kbd>⌥</kbd> on Mac).
   Both can be changed in settings.
 - **Looks:** system/light/dark theme and four accent colours. No title bar, just a thin strip to drag.
-- **Boards:** pick a board, or make a new one, at the top of settings. One is open at a time.
+- **Boards:** pick, make, rename (✎) or delete (×, click twice) boards at the top of settings. One is open at a time.
 - **Remembers everything:** board, settings, and window position and size. It can launch at login.
 - **Updates itself** from GitHub Releases (signed); an **Update** button appears when there's a new version.
 

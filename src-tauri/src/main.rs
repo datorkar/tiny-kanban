@@ -125,6 +125,41 @@ fn save(app: AppHandle, data: String, board: Option<String>) -> Result<(), Strin
     fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 
+/// Renames a named board (the main board keeps its name). Its backup moves too.
+#[tauri::command]
+fn rename_board(app: AppHandle, from: String, to: String) -> Result<(), String> {
+    if from.is_empty() || to.is_empty() {
+        return Err("The main board can't be renamed".into());
+    }
+    let (old, new) = (board_path(&app, &from)?, board_path(&app, &to)?);
+    // "work" to "Work" is the same file on Windows and macOS
+    if new.exists() && from.to_lowercase() != to.to_lowercase() {
+        return Err("There's already a board with that name".into());
+    }
+    fs::rename(&old, &new).map_err(|e| e.to_string())?;
+    let _ = fs::rename(old.with_extension("json.bak"), new.with_extension("json.bak"));
+    let _ = fs::write(data_dir(&app)?.join("last-board"), &to);
+    Ok(())
+}
+
+/// Deletes a named board. Nothing is lost for good: the file is renamed to
+/// <name>.json.deleted-<unix time>, which drops it from the list.
+#[tauri::command]
+fn delete_board(app: AppHandle, board: String) -> Result<(), String> {
+    if board.is_empty() {
+        return Err("The main board can't be deleted".into());
+    }
+    let path = board_path(&app, &board)?;
+    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    for p in [path.clone(), path.with_extension("json.bak")] {
+        if p.exists() {
+            let name = p.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            fs::rename(&p, p.with_file_name(format!("{name}.deleted-{secs}"))).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 // ---- Auto-update ---------------------------------------------------------
 
 struct Pending(Mutex<Option<Update>>);
@@ -462,6 +497,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             boards,
+            rename_board,
+            delete_board,
             load,
             save,
             check_update,

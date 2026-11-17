@@ -49,6 +49,10 @@ body{color:var(--fg);font:12.5px/1.35 var(--sys);overflow:hidden;display:flex;fl
 #st .cr{display:flex;align-items:center;gap:2px;margin-bottom:4px}
 #st .cr input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 6px;outline:none}
 #st .cr input:focus{border-color:var(--acc)}
+#st .bd select{flex:1;min-width:0}
+#st .bd button{width:24px;padding:0}
+#st .bd svg{width:12px;height:12px;display:block;margin:auto}
+#st .bd .arm,#st .bd .arm:hover{color:#fff;background:#e5484d}
 #st select,#bdIn{width:100%;box-sizing:border-box;font:inherit;color:inherit;background:var(--bg);border:1px solid #8884;border-radius:4px;padding:3px 4px;outline:none}
 #st select:focus,#bdIn:focus{border-color:var(--acc)}
 #bdIn{margin-top:4px;padding:3px 6px}
@@ -198,8 +202,9 @@ body.dragging,body.dragging *{cursor:grabbing!important}
 <div id="fl" hidden><input id="flIn" placeholder="Filter cards…" spellcheck="false" aria-label="Filter cards"><span id="flN"></span></div>
 <div id="st" hidden><div class="sb" hidden></div>
 <h3>Board</h3>
-<select id="bdSel" aria-label="Board"></select>
-<input id="bdIn" placeholder="Name, then Enter" aria-label="New board name" spellcheck="false" autocomplete="off" maxlength="40" hidden>
+<div class="cr bd"><select id="bdSel" aria-label="Board"></select><button id="bdRn" title="Rename board"><svg viewBox="0 0 16 16"><path d="M11 2.5l2.5 2.5L5.5 13H3v-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button><button class="rm" id="bdX" title="Delete board">×</button></div>
+<input id="bdIn" placeholder="Name, then Enter" aria-label="Board name" spellcheck="false" autocomplete="off" maxlength="40" hidden>
+<div class="note err" id="bdErr" hidden></div>
 <h3>Opacity</h3>
 <div class="op"><input id="opIn" type="range" min="30" max="100" step="10" value="100" aria-label="Opacity"><b id="opOut">100%</b></div>
 <h3>Columns</h3>
@@ -267,6 +272,16 @@ async function loadBoard(name) {
     board = name;
     return localStorage.getItem(lsKey(name)) || '';
   } catch (_) { board = name || ''; return '' }
+}
+async function renameBoard(from, to) {
+  if (invoke) return invoke('rename_board', { from, to });
+  const v = localStorage.getItem(lsKey(from));
+  if (from.toLowerCase() !== to.toLowerCase() && localStorage.getItem(lsKey(to)) !== null) throw "There's already a board with that name";
+  localStorage.setItem(lsKey(to), v); localStorage.removeItem(lsKey(from)); localStorage.setItem('kanban-board', to);
+}
+async function removeBoard(b) {
+  if (invoke) return invoke('delete_board', { board: b });
+  localStorage.removeItem(lsKey(b));
 }
 async function listBoards() {
   if (invoke) return invoke('boards');
@@ -740,30 +755,52 @@ function renderSettings() {
   if (invoke) invoke('autostart', {}).then(v => { auto.checked = v }, () => { auto.disabled = true });
 }
 
-// Board picker: the main board, the named ones, and "New board…".
-const bdSel = document.getElementById('bdSel'), bdIn = document.getElementById('bdIn');
+// Board picker: the main board, the named ones, and "New board…". The pencil
+// renames the open board and × deletes it (click twice); the main board can't
+// be renamed or deleted.
+const bdSel = document.getElementById('bdSel'), bdIn = document.getElementById('bdIn'), bdErr = document.getElementById('bdErr');
+const bdRn = document.getElementById('bdRn'), bdX = document.getElementById('bdX');
+let renaming = false, armed = 0;
 async function renderBoards() {
   const names = await listBoards();
   if (board && !names.includes(board)) names.push(board); // new and not saved yet
   bdSel.replaceChildren(...['', ...names].map(n => new Option(n || 'Main', n)), new Option('New board…', '\n'));
   bdSel.value = board;
+  bdRn.disabled = bdX.disabled = !board;
+  disarm();
+}
+function disarm() { clearTimeout(armed); armed = 0; bdX.classList.remove('arm'); bdX.title = 'Delete board' }
+function askName(value) {
+  bdErr.hidden = true;
+  bdIn.hidden = false; bdIn.value = value; bdIn.focus(); bdIn.select();
 }
 bdSel.onchange = () => {
   if (bdSel.value !== '\n') return openBoard(bdSel.value);
-  bdIn.hidden = false; bdIn.value = ''; bdIn.focus();
+  renaming = false; askName('');
 };
-bdIn.onkeydown = e => {
+bdRn.onclick = () => { renaming = true; askName(board) };
+bdX.onclick = async () => {
+  if (!armed) { bdX.classList.add('arm'); bdX.title = 'Click again to delete this board'; armed = setTimeout(disarm, 3000); return }
+  disarm(); clearTimeout(timer); timer = 0;
+  try { await removeBoard(board) } catch (e) { bdErr.textContent = String(e); bdErr.hidden = false; return }
+  openBoard('', true);
+};
+bdIn.onkeydown = async e => {
   e.stopPropagation();
   if (e.key === 'Escape') bdIn.blur();
   if (e.key !== 'Enter') return;
   // the name is also the file name
   const name = bdIn.value.replace(/[\/\\:*?"<>|\x00-\x1f]/g, '').replace(/^[.\s]+/, '').trim().slice(0, 40);
   if (!name) return;
-  bdIn.hidden = true; openBoard(name);
-};
-bdIn.onblur = () => { if (!bdIn.hidden) { bdIn.hidden = true; bdSel.value = board } };
-async function openBoard(name) {
+  if (!renaming) { bdIn.hidden = true; return openBoard(name) }
+  if (name === board) { bdIn.hidden = true; return }
   if (timer) { clearTimeout(timer); await save(); }
+  try { await renameBoard(board, name) } catch (e) { bdErr.textContent = String(e); bdErr.hidden = false; return }
+  board = name; bdIn.hidden = true; renderBoards();
+};
+bdIn.onblur = () => { if (!bdIn.hidden) { bdIn.hidden = true; bdErr.hidden = true; bdSel.value = board } };
+async function openBoard(name, deleted) {
+  if (timer && !deleted) { clearTimeout(timer); await save(); }
   let data = null;
   try { data = JSON.parse(await loadBoard(name) || 'null') } catch (_) {}
   hideZoom(); hideTimer(); select(null);
