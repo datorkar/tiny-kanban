@@ -28,7 +28,7 @@ browser.
 ## Highlights
 
 - **Cards:** drag and drop, double-click to edit, autocomplete from words already on the board, and the OS's own spell
-  check. Web links in cards are clickable. × archives a card, and the trash can at a column's bottom right (click twice) archives the whole column; restore them or delete it for good from settings.
+  check. Web links in cards are clickable. × archives a card, and the trash can at a column's bottom right (click twice) archives the whole column; restore them or delete them for good from settings.
 - **Keyboard:** arrows select a card, <kbd>Shift</kbd>+arrows move it, <kbd>Enter</kbd> edits, <kbd>Del</kbd> archives,
   <kbd>N</kbd> adds a card, <kbd>T</kbd> sets a timer or deadline, <kbd>Ctrl</kbd>+<kbd>F</kbd> or <kbd>/</kbd> filters the board,
   and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the last change (<kbd>⌘</kbd> on Mac).
